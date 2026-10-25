@@ -1,0 +1,1 @@
+en esta carpetan van los archivos y scripts de la base de datos 
