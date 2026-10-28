@@ -1,0 +1,31 @@
+# Secretos y credenciales: nunca se suben
+.env
+*.env
+*.pem
+*.ppk
+*.key
+
+# Archivos del IDE
+.idea/
+*.iml
+*.iws
+
+# Compilados y dependencias
+node_modules/
+dist/
+.angular/
+build/
+.gradle/
+out/
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Archivos temporales de Office
+~$*
+
+# Videos: se enlazan en el README, no se suben
+*.mp4
+*.mov
+*.mkv
