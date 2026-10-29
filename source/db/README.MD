@@ -19,8 +19,8 @@ Ejecutar desde esta carpeta, en este orden, sobre una instalación limpia (RNF-0
 | 3 | `03_funciones_triggers.sql` | Reglas que comparan tablas o leen parámetros: 6 triggers | `psql -U postgres -d sigh -f 03_funciones_triggers.sql` |
 | 4 | `04_vistas.sql` | 7 vistas: atributos derivados, horario y reportes | `psql -U postgres -d sigh -f 04_vistas.sql` |
 | 5 | `05_roles_permisos.sql` | Dueño `sigh_owner`, 4 roles, 4 usuarios de conexión, permisos y seguridad por fila | `psql -U postgres -d sigh -v app_password='<contraseña>' -f 05_roles_permisos.sql` |
-| 6 | `06_datos_prueba.sql` | Datos de prueba (Ángel) | `psql -U postgres -d sigh -f 06_datos_prueba.sql` |
-| 7 | `07_pruebas_reglas.sql` | Un intento inválido por regla; cada uno debe fallar con su mensaje (Ángel) | `psql -U postgres -d sigh -f 07_pruebas_reglas.sql` |
+| 6 | `06_datos_prueba.sql` | Datos ficticios: 2 períodos, 8 docentes, 7 espacios, 7 cursos, 13 secciones, 23 sesiones y una versión ya avalada y sincronizada | `psql -U postgres -d sigh -f 06_datos_prueba.sql` |
+| 7 | `07_pruebas_reglas.sql` | 41 pruebas: un intento inválido por regla, más casos válidos de control; no cambia ningún dato | `psql -U postgres -d sigh -f 07_pruebas_reglas.sql` |
 
 Cada script termina con una consulta de verificación. Salida esperada:
 
@@ -29,6 +29,8 @@ Cada script termina con una consulta de verificación. Salida esperada:
 - **03:** 6 triggers: 2 en `asignacion`, 2 en `version_horario`, 1 en `seccion`, 1 en `curso`.
 - **04:** 7 vistas y franjas con `hora_fin` = `hora_inicio` + 2 h.
 - **05:** la lista de permisos de escritura por rol.
+- **06:** 23 asignaciones, la versión de 2026-2 SINCRONIZADO (avalada por `aprobador`) y la de 2027-1 EN_EDICION, y la carga de cada docente.
+- **07:** una tabla de 41 pruebas y el resumen `41 | 41 | 0` (pruebas, correctas, fallidas). Cualquier fila con `ok = f` es un error.
 
 Los scripts usan `\set ON_ERROR_STOP on`: si algo falla, se detienen en el primer error.
 
@@ -36,18 +38,13 @@ Los scripts usan `\set ON_ERROR_STOP on`: si algo falla, se detienen en el prime
 
 `01_ddl.sql` borra la base `sigh` si existe y la crea de nuevo. Para empezar de cero, se vuelven a ejecutar los scripts desde el 01. Los roles del 05 son del servidor y no se borran; el 05 los reutiliza.
 
-## Para escribir los scripts 06 y 07
+## Notas sobre los scripts 06 y 07
 
-1. **Identificar al usuario antes de escribir.** Todo cambio en `asignacion` o `version_horario` pasa por la bitácora y exige saber quién lo hace (RF-24). Al inicio del script:
-   ```sql
-   SET app.id_usuario = '1';   -- usuario técnico 'sistema' (02_catalogos.sql)
-   ```
-   Sin esto, el cambio falla con `RF-24: falta identificar al usuario`.
-2. **DOCENTE y ESPACIO solo los carga el superusuario o `sigh_owner`.** Los roles de la aplicación no pueden escribirlos (RN-19).
-3. **No enviar columnas que llena la base:** los `id` (IDENTITY), `asignacion.id_usuario_creador` y `fecha_creacion`, y `version_horario.id_usuario_aval` y `fecha_aval`.
-4. **Una versión nace `EN_EDICION`.** Para avalarla: `UPDATE ... SET estado = 'PENDIENTE'` y luego `'AVALADO'` con `app.id_usuario` de un usuario con rol APROBADOR.
-5. **Pruebas de permisos en el 07.** Conectarse con los usuarios de la aplicación (`app_coordinador`, `app_docente`…), no como `postgres`: el superusuario se salta los permisos y la seguridad por fila.
-6. **Un `INSERT` rechazado consume el `id` IDENTITY.** No escribir ids fijos después de un intento fallido; buscarlos por su clave natural (código, número).
+1. **El 06 se ejecuta una sola vez sobre una base recién creada.** Si se repite, las UNIQUE lo rechazan y no queda nada a medias. Para recargar, ejecutar de nuevo del 01 al 06.
+2. **Todo cambio en el horario exige `app.id_usuario`** (RF-24). El 06 lo fija con el usuario de cada rol: el Coordinador crea las sesiones, el Aprobador avala y el Administrador sincroniza. Así la bitácora queda realista.
+3. **El 07 se ejecuta cuantas veces se quiera.** Cada prueba toma el rol de la aplicación que haría la operación (`SET ROLE`), porque el superusuario se salta los permisos. Luego deshace la operación.
+4. **Las contraseñas de los usuarios de prueba son un marcador** (`HASH_PENDIENTE_BACKEND`). El backend genera y guarda los hashes reales (RNF-04).
+5. **La concurrencia (RNF-08) se prueba a mano con dos ventanas de psql.** Los pasos están al final del 07.
 
 ## Conexión desde la aplicación
 
