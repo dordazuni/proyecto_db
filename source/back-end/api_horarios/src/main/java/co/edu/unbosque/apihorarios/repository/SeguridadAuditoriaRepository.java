@@ -78,6 +78,27 @@ public class SeguridadAuditoriaRepository {
         throw new NoSuchElementException("Usuario no encontrado: " + idUsuario);
     }
 
+    public Usuario obtenerUsuarioConContrasenaPorNombre(String nombreUsuario) throws SQLException {
+        String sql = "SELECT u.id_usuario, u.nombre_usuario, u.contrasena, u.activo, u.id_rol, r.nombre AS nombre_rol, " +
+                     "       u.id_docente, d.nombres || ' ' || d.apellidos AS nombre_docente " +
+                     "FROM usuario u " +
+                     "JOIN rol r ON r.id_rol = u.id_rol " +
+                     "LEFT JOIN docente d ON d.id_docente = u.id_docente " +
+                     "WHERE LOWER(u.nombre_usuario) = LOWER(?)";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, nombreUsuario);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    Usuario u = mapUsuario(rs);
+                    u.setContrasena(rs.getString("contrasena"));
+                    return u;
+                }
+            }
+        }
+        return null;
+    }
+
     public Usuario crearUsuario(Usuario u, String passwordHash) throws SQLException {
         String sql = "INSERT INTO usuario (nombre_usuario, contrasena, activo, id_rol, id_docente) " +
                      "VALUES (?, ?, COALESCE(?, true), ?, ?) RETURNING id_usuario";

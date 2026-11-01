@@ -1,7 +1,9 @@
 package co.edu.unbosque.apihorarios.repository;
 
 import co.edu.unbosque.apihorarios.model.Asignacion;
+import co.edu.unbosque.apihorarios.model.Usuario;
 import co.edu.unbosque.apihorarios.model.VersionHorario;
+import co.edu.unbosque.apihorarios.security.AuthContextHolder;
 import org.springframework.stereotype.Repository;
 
 import javax.sql.DataSource;
@@ -26,14 +28,33 @@ public class ProgramacionRepository {
     // =====================================================================
     // RF-12, RF-15, RF-16, RF-17, RF-18: Versiones de Horario (version_horario)
     // =====================================================================
+    private boolean canReadUsuarioTable() {
+        Usuario u = AuthContextHolder.getCurrentUser();
+        if (u == null || u.getNombreRol() == null) {
+            return true;
+        }
+        String rol = u.getNombreRol().trim().toUpperCase();
+        return "ADMINISTRADOR".equals(rol) || "COORDINADOR".equals(rol);
+    }
+
     public List<VersionHorario> listarVersiones(Integer idPeriodo) throws SQLException {
-        StringBuilder sql = new StringBuilder(
-                "SELECT v.id_version, v.id_periodo, p.codigo AS codigo_periodo, v.numero_version, " +
-                "       v.estado, v.fecha_aval, v.id_documento_externo, v.id_usuario_aval, " +
-                "       u.nombre_usuario AS nombre_usuario_aval " +
-                "FROM version_horario v " +
-                "JOIN periodo_academico p ON p.id_periodo = v.id_periodo " +
-                "LEFT JOIN usuario u ON u.id_usuario = v.id_usuario_aval ");
+        StringBuilder sql;
+        if (canReadUsuarioTable()) {
+            sql = new StringBuilder(
+                    "SELECT v.id_version, v.id_periodo, p.codigo AS codigo_periodo, v.numero_version, " +
+                    "       v.estado, v.fecha_aval, v.id_documento_externo, v.id_usuario_aval, " +
+                    "       u.nombre_usuario AS nombre_usuario_aval " +
+                    "FROM version_horario v " +
+                    "JOIN periodo_academico p ON p.id_periodo = v.id_periodo " +
+                    "LEFT JOIN usuario u ON u.id_usuario = v.id_usuario_aval ");
+        } else {
+            sql = new StringBuilder(
+                    "SELECT v.id_version, v.id_periodo, p.codigo AS codigo_periodo, v.numero_version, " +
+                    "       v.estado, v.fecha_aval, v.id_documento_externo, v.id_usuario_aval, " +
+                    "       NULL AS nombre_usuario_aval " +
+                    "FROM version_horario v " +
+                    "JOIN periodo_academico p ON p.id_periodo = v.id_periodo ");
+        }
         if (idPeriodo != null) {
             sql.append("WHERE v.id_periodo = ? ");
         }
@@ -55,13 +76,23 @@ public class ProgramacionRepository {
     }
 
     public VersionHorario obtenerVersionPorId(int idVersion) throws SQLException {
-        String sql = "SELECT v.id_version, v.id_periodo, p.codigo AS codigo_periodo, v.numero_version, " +
-                     "       v.estado, v.fecha_aval, v.id_documento_externo, v.id_usuario_aval, " +
-                     "       u.nombre_usuario AS nombre_usuario_aval " +
-                     "FROM version_horario v " +
-                     "JOIN periodo_academico p ON p.id_periodo = v.id_periodo " +
-                     "LEFT JOIN usuario u ON u.id_usuario = v.id_usuario_aval " +
-                     "WHERE v.id_version = ?";
+        String sql;
+        if (canReadUsuarioTable()) {
+            sql = "SELECT v.id_version, v.id_periodo, p.codigo AS codigo_periodo, v.numero_version, " +
+                  "       v.estado, v.fecha_aval, v.id_documento_externo, v.id_usuario_aval, " +
+                  "       u.nombre_usuario AS nombre_usuario_aval " +
+                  "FROM version_horario v " +
+                  "JOIN periodo_academico p ON p.id_periodo = v.id_periodo " +
+                  "LEFT JOIN usuario u ON u.id_usuario = v.id_usuario_aval " +
+                  "WHERE v.id_version = ?";
+        } else {
+            sql = "SELECT v.id_version, v.id_periodo, p.codigo AS codigo_periodo, v.numero_version, " +
+                  "       v.estado, v.fecha_aval, v.id_documento_externo, v.id_usuario_aval, " +
+                  "       NULL AS nombre_usuario_aval " +
+                  "FROM version_horario v " +
+                  "JOIN periodo_academico p ON p.id_periodo = v.id_periodo " +
+                  "WHERE v.id_version = ?";
+        }
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, idVersion);

@@ -224,6 +224,16 @@ export interface Usuario {
   nombreDocente?: string | null;
 }
 
+export interface LoginRequest {
+  nombreUsuario: string;
+  contrasena: string;
+}
+
+export interface LoginResponse {
+  token: string;
+  usuario: Usuario;
+}
+
 export interface LogAuditoria {
   idLog: number;
   idUsuario: number;

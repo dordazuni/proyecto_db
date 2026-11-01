@@ -1,6 +1,8 @@
 package co.edu.unbosque.apihorarios.controller;
 
 import co.edu.unbosque.apihorarios.model.LogAuditoria;
+import co.edu.unbosque.apihorarios.model.LoginRequest;
+import co.edu.unbosque.apihorarios.model.LoginResponse;
 import co.edu.unbosque.apihorarios.model.Rol;
 import co.edu.unbosque.apihorarios.model.Usuario;
 import co.edu.unbosque.apihorarios.service.SeguridadAuditoriaService;
@@ -24,6 +26,24 @@ public class SeguridadAuditoriaController {
 
     public SeguridadAuditoriaController(SeguridadAuditoriaService seguridadAuditoriaService) {
         this.seguridadAuditoriaService = seguridadAuditoriaService;
+    }
+
+    // =====================================================================
+    // Autenticación y Sesión (RF-23, RF-25 y RNF-04)
+    // =====================================================================
+    @PostMapping({"/auth/login", "/login"})
+    public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request) throws SQLException {
+        return ResponseEntity.ok(
+                seguridadAuditoriaService.autenticarUsuario(
+                        request != null ? request.getNombreUsuario() : null,
+                        request != null ? request.getContrasena() : null
+                )
+        );
+    }
+
+    @GetMapping("/auth/me")
+    public ResponseEntity<Usuario> obtenerSesionActual() throws SQLException {
+        return ResponseEntity.ok(seguridadAuditoriaService.obtenerUsuarioActualAutenticado());
     }
 
     // =====================================================================

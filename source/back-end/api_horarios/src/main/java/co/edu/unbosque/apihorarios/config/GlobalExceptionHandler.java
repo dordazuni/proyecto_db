@@ -1,6 +1,7 @@
 package co.edu.unbosque.apihorarios.config;
 
 import co.edu.unbosque.apihorarios.model.ApiErrorResponse;
+import co.edu.unbosque.apihorarios.security.UnauthorizedException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -17,6 +18,18 @@ public class GlobalExceptionHandler {
 
     private static final Pattern RULE_PREFIX_PATTERN = Pattern.compile("(RN-\\d{2}|RF-\\d{2}|RNF-\\d{2}|S-\\d{2}|P-\\d{2})");
     private static final Pattern CONSTRAINT_RULE_PATTERN = Pattern.compile("_(rn\\d{2}|rf\\d{2}|s\\d{2}|p\\d{2})_", Pattern.CASE_INSENSITIVE);
+
+    @ExceptionHandler(UnauthorizedException.class)
+    public ResponseEntity<ApiErrorResponse> handleUnauthorized(UnauthorizedException ex) {
+        ApiErrorResponse error = new ApiErrorResponse(
+                HttpStatus.UNAUTHORIZED.value(),
+                ex.getRegla() != null ? ex.getRegla() : "RF-23",
+                ex.getMessage(),
+                null,
+                LocalDateTime.now()
+        );
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+    }
 
     @ExceptionHandler(SQLException.class)
     public ResponseEntity<ApiErrorResponse> handleSQLException(SQLException ex) {
@@ -83,14 +96,16 @@ public class GlobalExceptionHandler {
     }
 
     private String cleanPostgresMessage(String raw) {
-        int whereIdx = raw.indexOf("\n  Where:");
+        String cleaned = raw;
+        int whereIdx = cleaned.indexOf("\n  Where:");
         if (whereIdx > 0) {
-            return raw.substring(0, whereIdx).trim();
+            cleaned = cleaned.substring(0, whereIdx).trim();
         }
-        int enIdx = raw.indexOf("\n  En:");
+        int enIdx = cleaned.indexOf("\n  En:");
         if (enIdx > 0) {
-            return raw.substring(0, enIdx).trim();
+            cleaned = cleaned.substring(0, enIdx).trim();
         }
-        return raw.trim();
+        cleaned = cleaned.replaceFirst("^(?i)ERROR:\\s*", "").trim();
+        return cleaned;
     }
 }

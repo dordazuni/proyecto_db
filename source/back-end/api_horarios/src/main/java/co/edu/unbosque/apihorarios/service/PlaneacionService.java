@@ -3,6 +3,7 @@ package co.edu.unbosque.apihorarios.service;
 import co.edu.unbosque.apihorarios.model.Disponibilidad;
 import co.edu.unbosque.apihorarios.model.Seccion;
 import co.edu.unbosque.apihorarios.repository.PlaneacionRepository;
+import co.edu.unbosque.apihorarios.security.AuthContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.sql.SQLException;
@@ -46,28 +47,18 @@ public class PlaneacionService {
         return planeacionRepository.cambiarEstadoSeccion(idSeccion, estado);
     }
 
-    // RF-11: Disponibilidad de Docentes
+    // RF-11: Disponibilidad de Docentes (el idUsuario sale exclusivamente del token)
     public List<Disponibilidad> listarDisponibilidad(Integer idDocente, Integer idPeriodo) throws SQLException {
         return planeacionRepository.listarDisponibilidad(idDocente, idPeriodo);
     }
 
-    public Disponibilidad registrarDisponibilidad(Disponibilidad disponibilidad, Integer idUsuarioHeader) throws SQLException {
-        int idUsuario = resolverIdUsuario(idUsuarioHeader, disponibilidad.getIdUsuario());
+    public Disponibilidad registrarDisponibilidad(Disponibilidad disponibilidad) throws SQLException {
+        int idUsuario = AuthContextHolder.requireCurrentUserId();
         return planeacionRepository.registrarDisponibilidad(disponibilidad, idUsuario);
     }
 
-    public void eliminarDisponibilidad(int idDocente, int idPeriodo, int idFranja, Integer idUsuarioHeader) throws SQLException {
-        int idUsuario = resolverIdUsuario(idUsuarioHeader, null);
+    public void eliminarDisponibilidad(int idDocente, int idPeriodo, int idFranja) throws SQLException {
+        int idUsuario = AuthContextHolder.requireCurrentUserId();
         planeacionRepository.eliminarDisponibilidad(idDocente, idPeriodo, idFranja, idUsuario);
-    }
-
-    private int resolverIdUsuario(Integer idUsuarioHeader, Integer idUsuarioBody) {
-        if (idUsuarioHeader != null && idUsuarioHeader > 0) {
-            return idUsuarioHeader;
-        }
-        if (idUsuarioBody != null && idUsuarioBody > 0) {
-            return idUsuarioBody;
-        }
-        return 1;
     }
 }

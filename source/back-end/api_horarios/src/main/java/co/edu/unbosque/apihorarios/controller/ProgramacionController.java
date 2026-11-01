@@ -12,7 +12,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -45,43 +44,30 @@ public class ProgramacionController {
 
     @PostMapping("/versiones")
     public ResponseEntity<VersionHorario> crearVersion(
-            @RequestBody VersionHorario version,
-            @RequestHeader(value = "X-Usuario-Id", required = false) Integer idUsuarioHeader) throws SQLException {
+            @RequestBody VersionHorario version) throws SQLException {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(programacionService.crearVersion(version, idUsuarioHeader));
+                .body(programacionService.crearVersion(version));
     }
 
     // =====================================================================
     // RF-15: Enviar versión a aprobación (EN_EDICION -> PENDIENTE)
     // =====================================================================
     @PatchMapping("/versiones/{id}/enviar-aprobacion")
-    public ResponseEntity<VersionHorario> enviarAAprobacion(
-            @PathVariable int id,
-            @RequestHeader(value = "X-Usuario-Id", required = false) Integer idUsuarioHeader,
-            @RequestBody(required = false) VersionHorario body) throws SQLException {
-        Integer idUsuarioBody = body != null ? body.getIdUsuario() : null;
-        return ResponseEntity.ok(programacionService.enviarAAprobacion(id, idUsuarioHeader, idUsuarioBody));
+    public ResponseEntity<VersionHorario> enviarAAprobacion(@PathVariable int id) throws SQLException {
+        return ResponseEntity.ok(programacionService.enviarAAprobacion(id));
     }
 
     // =====================================================================
     // RF-16: Avalar versión (PENDIENTE -> AVALADO) o devolverla a EN_EDICION
     // =====================================================================
     @PatchMapping("/versiones/{id}/avalar")
-    public ResponseEntity<VersionHorario> avalarVersion(
-            @PathVariable int id,
-            @RequestHeader(value = "X-Usuario-Id", required = false) Integer idUsuarioHeader,
-            @RequestBody(required = false) VersionHorario body) throws SQLException {
-        Integer idUsuarioBody = body != null ? body.getIdUsuario() : null;
-        return ResponseEntity.ok(programacionService.avalarVersion(id, idUsuarioHeader, idUsuarioBody));
+    public ResponseEntity<VersionHorario> avalarVersion(@PathVariable int id) throws SQLException {
+        return ResponseEntity.ok(programacionService.avalarVersion(id));
     }
 
     @PatchMapping("/versiones/{id}/devolver")
-    public ResponseEntity<VersionHorario> devolverVersion(
-            @PathVariable int id,
-            @RequestHeader(value = "X-Usuario-Id", required = false) Integer idUsuarioHeader,
-            @RequestBody(required = false) VersionHorario body) throws SQLException {
-        Integer idUsuarioBody = body != null ? body.getIdUsuario() : null;
-        return ResponseEntity.ok(programacionService.devolverVersion(id, idUsuarioHeader, idUsuarioBody));
+    public ResponseEntity<VersionHorario> devolverVersion(@PathVariable int id) throws SQLException {
+        return ResponseEntity.ok(programacionService.devolverVersion(id));
     }
 
     // =====================================================================
@@ -90,26 +76,20 @@ public class ProgramacionController {
     @PatchMapping("/versiones/{id}/sincronizar")
     public ResponseEntity<VersionHorario> sincronizarVersion(
             @PathVariable int id,
-            @RequestHeader(value = "X-Usuario-Id", required = false) Integer idUsuarioHeader,
             @RequestBody VersionHorario body) throws SQLException {
         if (body == null || body.getIdDocumentoExterno() == null || body.getIdDocumentoExterno().isBlank()) {
             throw new IllegalArgumentException("El campo 'idDocumentoExterno' es obligatorio para sincronizar");
         }
-        return ResponseEntity.ok(programacionService.sincronizarVersion(
-                id, body.getIdDocumentoExterno(), idUsuarioHeader, body.getIdUsuario()));
+        return ResponseEntity.ok(programacionService.sincronizarVersion(id, body.getIdDocumentoExterno()));
     }
 
     // =====================================================================
     // RF-18: Crear una versión nueva a partir de una avalada (clonar versión)
     // =====================================================================
     @PostMapping("/versiones/{id}/clonar")
-    public ResponseEntity<VersionHorario> clonarVersion(
-            @PathVariable int id,
-            @RequestHeader(value = "X-Usuario-Id", required = false) Integer idUsuarioHeader,
-            @RequestBody(required = false) VersionHorario body) throws SQLException {
-        Integer idUsuarioBody = body != null ? body.getIdUsuario() : null;
+    public ResponseEntity<VersionHorario> clonarVersion(@PathVariable int id) throws SQLException {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(programacionService.clonarVersion(id, idUsuarioHeader, idUsuarioBody));
+                .body(programacionService.clonarVersion(id));
     }
 
     // =====================================================================
@@ -127,27 +107,21 @@ public class ProgramacionController {
     }
 
     @PostMapping("/asignaciones")
-    public ResponseEntity<Asignacion> crearAsignacion(
-            @RequestBody Asignacion asignacion,
-            @RequestHeader(value = "X-Usuario-Id", required = false) Integer idUsuarioHeader) throws SQLException {
+    public ResponseEntity<Asignacion> crearAsignacion(@RequestBody Asignacion asignacion) throws SQLException {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(programacionService.crearAsignacion(asignacion, idUsuarioHeader));
+                .body(programacionService.crearAsignacion(asignacion));
     }
 
     @PutMapping("/asignaciones/{id}")
     public ResponseEntity<Asignacion> actualizarAsignacion(
             @PathVariable int id,
-            @RequestBody Asignacion asignacion,
-            @RequestHeader(value = "X-Usuario-Id", required = false) Integer idUsuarioHeader) throws SQLException {
-        return ResponseEntity.ok(programacionService.actualizarAsignacion(id, asignacion, idUsuarioHeader));
+            @RequestBody Asignacion asignacion) throws SQLException {
+        return ResponseEntity.ok(programacionService.actualizarAsignacion(id, asignacion));
     }
 
     @DeleteMapping("/asignaciones/{id}")
-    public ResponseEntity<Map<String, String>> eliminarAsignacion(
-            @PathVariable int id,
-            @RequestHeader(value = "X-Usuario-Id", required = false) Integer idUsuarioHeader,
-            @RequestParam(required = false) Integer idUsuario) throws SQLException {
-        programacionService.eliminarAsignacion(id, idUsuarioHeader, idUsuario);
+    public ResponseEntity<Map<String, String>> eliminarAsignacion(@PathVariable int id) throws SQLException {
+        programacionService.eliminarAsignacion(id);
         return ResponseEntity.ok(Map.of("message", "Asignación eliminada exitosamente"));
     }
 }

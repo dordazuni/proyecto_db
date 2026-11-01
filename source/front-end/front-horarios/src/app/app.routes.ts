@@ -1,6 +1,25 @@
-import { Routes } from '@angular/router';
+import { inject } from '@angular/core';
+import { CanActivateFn, Router, Routes } from '@angular/router';
+import { catchError, map, of } from 'rxjs';
 import { ConnectionCheckPageComponent } from './views/pages/connection-check-page/connection-check-page.component';
+import { LoginPageComponent } from './views/pages/login-page/login-page.component';
 import { WelcomePageComponent } from './views/pages/welcome-page/welcome-page.component';
+import { SighApiService } from './services/sigh-api.service';
+
+export const authGuard: CanActivateFn = () => {
+  const api = inject(SighApiService);
+  const router = inject(Router);
+  if (!api.authToken()) {
+    return router.createUrlTree(['/login']);
+  }
+  return api.obtenerSesionActual().pipe(
+    map(() => true),
+    catchError(() => {
+      api.logout();
+      return of(router.createUrlTree(['/login']));
+    })
+  );
+};
 
 export const routes: Routes = [
   {
@@ -8,8 +27,13 @@ export const routes: Routes = [
     component: ConnectionCheckPageComponent
   },
   {
+    path: 'login',
+    component: LoginPageComponent
+  },
+  {
     path: 'bienvenida',
-    component: WelcomePageComponent
+    component: WelcomePageComponent,
+    canActivate: [authGuard]
   },
   {
     path: '**',
