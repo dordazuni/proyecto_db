@@ -33,43 +33,45 @@ import { Curso, PeriodoAcademico, Recurso } from '../../../models/sigh.models';
       </button>
     </div>
 
-    <!-- RF-01: PERÍODOS ACADÉMICOS -->
+    <!-- RF-01: PERÍODOS ACADÉMICOS (Escritura exclusiva de ADMINISTRADOR) -->
     @if (subTab() === 'periodos') {
-      <div class="md-card">
-        <div class="md-card-header">
-          <div>
-            <h3 class="md-card-title"><span class="material-icons">calendar_today</span> RF-01 | Registrar Período Académico</h3>
-            <p class="md-card-subtitle">Código (ej. 2026-1), fechas de inicio y fin, y estado del período.</p>
+      @if (sigh.isAdmin()) {
+        <div class="md-card">
+          <div class="md-card-header">
+            <div>
+              <h3 class="md-card-title"><span class="material-icons">calendar_today</span> RF-01 | Registrar Período Académico</h3>
+              <p class="md-card-subtitle">Código (ej. 2026-1), fechas de inicio y fin, y estado del período.</p>
+            </div>
+          </div>
+          <div class="md-form-grid">
+            <div class="md-field">
+              <label>Código del Período</label>
+              <input class="md-input" [(ngModel)]="nuevoPeriodo.codigo" placeholder="Ej. 2026-2" />
+            </div>
+            <div class="md-field">
+              <label>Fecha Inicio</label>
+              <input type="date" class="md-input" [(ngModel)]="nuevoPeriodo.fechaInicio" />
+            </div>
+            <div class="md-field">
+              <label>Fecha Fin</label>
+              <input type="date" class="md-input" [(ngModel)]="nuevoPeriodo.fechaFin" />
+            </div>
+            <div class="md-field">
+              <label>Estado</label>
+              <select class="md-select" [(ngModel)]="nuevoPeriodo.estado">
+                <option value="PLANEACION">PLANEACION</option>
+                <option value="ACTIVO">ACTIVO</option>
+                <option value="CERRADO">CERRADO</option>
+              </select>
+            </div>
+            <div>
+              <button class="md-btn md-btn-filled" (click)="guardarPeriodo()">
+                <span class="material-icons">add</span> Crear Período
+              </button>
+            </div>
           </div>
         </div>
-        <div class="md-form-grid">
-          <div class="md-field">
-            <label>Código del Período</label>
-            <input class="md-input" [(ngModel)]="nuevoPeriodo.codigo" placeholder="Ej. 2026-2" />
-          </div>
-          <div class="md-field">
-            <label>Fecha Inicio</label>
-            <input type="date" class="md-input" [(ngModel)]="nuevoPeriodo.fechaInicio" />
-          </div>
-          <div class="md-field">
-            <label>Fecha Fin</label>
-            <input type="date" class="md-input" [(ngModel)]="nuevoPeriodo.fechaFin" />
-          </div>
-          <div class="md-field">
-            <label>Estado</label>
-            <select class="md-select" [(ngModel)]="nuevoPeriodo.estado">
-              <option value="PLANEACION">PLANEACION</option>
-              <option value="ACTIVO">ACTIVO</option>
-              <option value="CERRADO">CERRADO</option>
-            </select>
-          </div>
-          <div>
-            <button class="md-btn md-btn-filled" (click)="guardarPeriodo()">
-              <span class="material-icons">add</span> Crear Período
-            </button>
-          </div>
-        </div>
-      </div>
+      }
 
       <div class="md-card">
         <div class="md-card-header">
@@ -84,7 +86,9 @@ import { Curso, PeriodoAcademico, Recurso } from '../../../models/sigh.models';
                 <th>Fecha Inicio</th>
                 <th>Fecha Fin</th>
                 <th>Estado</th>
-                <th>Acciones</th>
+                @if (sigh.isAdmin()) {
+                  <th>Acciones</th>
+                }
               </tr>
             </thead>
             <tbody>
@@ -99,10 +103,12 @@ import { Curso, PeriodoAcademico, Recurso } from '../../../models/sigh.models';
                       {{ p.estado }}
                     </span>
                   </td>
-                  <td>
-                    <button class="md-btn md-btn-tonal md-btn-sm" (click)="cambiarEstadoPeriodo(p, 'ACTIVO')">Activar</button>
-                    <button class="md-btn md-btn-outlined md-btn-sm" style="margin-left: 6px" (click)="cambiarEstadoPeriodo(p, 'CERRADO')">Cerrar</button>
-                  </td>
+                  @if (sigh.isAdmin()) {
+                    <td>
+                      <button class="md-btn md-btn-tonal md-btn-sm" (click)="cambiarEstadoPeriodo(p, 'ACTIVO')">Activar</button>
+                      <button class="md-btn md-btn-outlined md-btn-sm" style="margin-left: 6px" (click)="cambiarEstadoPeriodo(p, 'CERRADO')">Cerrar</button>
+                    </td>
+                  }
                 </tr>
               }
             </tbody>
@@ -111,7 +117,7 @@ import { Curso, PeriodoAcademico, Recurso } from '../../../models/sigh.models';
       </div>
     }
 
-    <!-- RF-02 y RF-06: DOCENTES, TIPOS DE CONTRATO Y HABILITACIÓN DE CURSOS -->
+    <!-- RF-02 y RF-06: DOCENTES, TIPOS DE CONTRATO Y HABILITACIÓN DE CURSOS (Habilitación exclusiva de COORDINADOR) -->
     @if (subTab() === 'docentes') {
       <div class="md-card">
         <div class="md-card-header">
@@ -148,7 +154,7 @@ import { Curso, PeriodoAcademico, Recurso } from '../../../models/sigh.models';
         <div class="md-card-header">
           <div>
             <h3 class="md-card-title"><span class="material-icons">school</span> RF-02 & RF-06 | Docentes (Solo lectura RN-19) y Cursos Habilitados (RN-12)</h3>
-            <p class="md-card-subtitle">Selecciona un docente para gestionar qué cursos está habilitado a dictar.</p>
+            <p class="md-card-subtitle">Selecciona un docente para consultar o gestionar qué cursos está habilitado a dictar.</p>
           </div>
         </div>
         <div class="md-table-container">
@@ -199,21 +205,23 @@ import { Curso, PeriodoAcademico, Recurso } from '../../../models/sigh.models';
               RF-06 | Cursos Habilitados para Docente #{{ docenteSeleccionadoId() }} (Regla RN-12)
             </h3>
           </div>
-          <div class="md-form-grid" style="margin-bottom: 16px">
-            <div class="md-field">
-              <label>Seleccionar Curso para Habilitar</label>
-              <select class="md-select" [(ngModel)]="cursoParaHabilitarId">
-                @for (c of sigh.cursos(); track c.idCurso) {
-                  <option [ngValue]="c.idCurso">{{ c.codigo }} - {{ c.nombre }}</option>
-                }
-              </select>
+          @if (sigh.isCoordinador()) {
+            <div class="md-form-grid" style="margin-bottom: 16px">
+              <div class="md-field">
+                <label>Seleccionar Curso para Habilitar</label>
+                <select class="md-select" [(ngModel)]="cursoParaHabilitarId">
+                  @for (c of sigh.cursos(); track c.idCurso) {
+                    <option [ngValue]="c.idCurso">{{ c.codigo }} - {{ c.nombre }}</option>
+                  }
+                </select>
+              </div>
+              <div>
+                <button class="md-btn md-btn-filled" (click)="habilitarCurso()">
+                  <span class="material-icons">add_task</span> Habilitar Curso
+                </button>
+              </div>
             </div>
-            <div>
-              <button class="md-btn md-btn-filled" (click)="habilitarCurso()">
-                <span class="material-icons">add_task</span> Habilitar Curso
-              </button>
-            </div>
-          </div>
+          }
           <div class="md-table-container">
             <table class="md-table">
               <thead>
@@ -221,7 +229,9 @@ import { Curso, PeriodoAcademico, Recurso } from '../../../models/sigh.models';
                   <th>ID Curso</th>
                   <th>Código</th>
                   <th>Nombre del Curso</th>
-                  <th>Acción</th>
+                  @if (sigh.isCoordinador()) {
+                    <th>Acción</th>
+                  }
                 </tr>
               </thead>
               <tbody>
@@ -230,15 +240,17 @@ import { Curso, PeriodoAcademico, Recurso } from '../../../models/sigh.models';
                     <td>#{{ dc.idCurso }}</td>
                     <td><strong>{{ dc.codigoCurso }}</strong></td>
                     <td>{{ dc.nombreCurso }}</td>
-                    <td>
-                      <button class="md-btn md-btn-danger md-btn-sm" (click)="sigh.deshabilitarDocenteEnCurso(docenteSeleccionadoId()!, dc.idCurso)">
-                        <span class="material-icons">delete</span> Retirar
-                      </button>
-                    </td>
+                    @if (sigh.isCoordinador()) {
+                      <td>
+                        <button class="md-btn md-btn-danger md-btn-sm" (click)="sigh.deshabilitarDocenteEnCurso(docenteSeleccionadoId()!, dc.idCurso)">
+                          <span class="material-icons">delete</span> Retirar
+                        </button>
+                      </td>
+                    }
                   </tr>
                 } @empty {
                   <tr>
-                    <td colspan="4">Este docente aún no tiene cursos habilitados.</td>
+                    <td [attr.colspan]="sigh.isCoordinador() ? 4 : 3">Este docente aún no tiene cursos habilitados.</td>
                   </tr>
                 }
               </tbody>
@@ -248,13 +260,13 @@ import { Curso, PeriodoAcademico, Recurso } from '../../../models/sigh.models';
       }
     }
 
-    <!-- RF-03 y RF-04: ESPACIOS FÍSICOS Y DOTACIÓN DE RECURSOS -->
+    <!-- RF-03 y RF-04: ESPACIOS FÍSICOS Y DOTACIÓN DE RECURSOS (Dotación exclusiva de ADMINISTRADOR) -->
     @if (subTab() === 'espacios') {
       <div class="md-card">
         <div class="md-card-header">
           <div>
             <h3 class="md-card-title"><span class="material-icons">domain</span> RF-03 & RF-04 | Espacios Físicos (Solo lectura RN-19) y Dotación (RN-14)</h3>
-            <p class="md-card-subtitle">Aulas, laboratorios de cómputo y especializados. Selecciona un espacio para ver o asignar sus recursos.</p>
+            <p class="md-card-subtitle">Aulas, laboratorios de cómputo y especializados. Selecciona un espacio para ver sus recursos.</p>
           </div>
         </div>
         <div class="md-table-container">
@@ -281,7 +293,7 @@ import { Curso, PeriodoAcademico, Recurso } from '../../../models/sigh.models';
                   <td><strong>{{ e.capacidad }}</strong> est.</td>
                   <td>
                     <button class="md-btn md-btn-tonal md-btn-sm" (click)="seleccionarEspacioDotacion(e.idEspacio)">
-                      <span class="material-icons">inventory_2</span> Ver / Dotar Recursos
+                      <span class="material-icons">inventory_2</span> {{ sigh.isAdmin() ? 'Ver / Dotar Recursos' : 'Ver Recursos' }}
                     </button>
                   </td>
                 </tr>
@@ -299,25 +311,27 @@ import { Curso, PeriodoAcademico, Recurso } from '../../../models/sigh.models';
               RF-04 | Recursos disponibles en Espacio #{{ espacioSeleccionadoId() }} (Regla RN-14)
             </h3>
           </div>
-          <div class="md-form-grid" style="margin-bottom: 16px">
-            <div class="md-field">
-              <label>Recurso</label>
-              <select class="md-select" [(ngModel)]="recursoEspacioId">
-                @for (r of sigh.recursos(); track r.idRecurso) {
-                  <option [ngValue]="r.idRecurso">{{ r.nombre }} ({{ r.categoria }})</option>
-                }
-              </select>
+          @if (sigh.isAdmin()) {
+            <div class="md-form-grid" style="margin-bottom: 16px">
+              <div class="md-field">
+                <label>Recurso</label>
+                <select class="md-select" [(ngModel)]="recursoEspacioId">
+                  @for (r of sigh.recursos(); track r.idRecurso) {
+                    <option [ngValue]="r.idRecurso">{{ r.nombre }} ({{ r.categoria }})</option>
+                  }
+                </select>
+              </div>
+              <div class="md-field">
+                <label>Cantidad</label>
+                <input type="number" min="1" class="md-input" [(ngModel)]="recursoEspacioCantidad" />
+              </div>
+              <div>
+                <button class="md-btn md-btn-filled" (click)="asignarRecursoEspacio()">
+                  <span class="material-icons">add</span> Asignar / Actualizar Dotación
+                </button>
+              </div>
             </div>
-            <div class="md-field">
-              <label>Cantidad</label>
-              <input type="number" min="1" class="md-input" [(ngModel)]="recursoEspacioCantidad" />
-            </div>
-            <div>
-              <button class="md-btn md-btn-filled" (click)="asignarRecursoEspacio()">
-                <span class="material-icons">add</span> Asignar / Actualizar Dotación
-              </button>
-            </div>
-          </div>
+          }
           <div class="md-table-container">
             <table class="md-table">
               <thead>
@@ -326,7 +340,9 @@ import { Curso, PeriodoAcademico, Recurso } from '../../../models/sigh.models';
                   <th>Recurso</th>
                   <th>Categoría</th>
                   <th>Cantidad</th>
-                  <th>Acción</th>
+                  @if (sigh.isAdmin()) {
+                    <th>Acción</th>
+                  }
                 </tr>
               </thead>
               <tbody>
@@ -336,15 +352,17 @@ import { Curso, PeriodoAcademico, Recurso } from '../../../models/sigh.models';
                     <td><strong>{{ er.nombreRecurso }}</strong></td>
                     <td>{{ er.categoriaRecurso }}</td>
                     <td>{{ er.cantidad }}</td>
-                    <td>
-                      <button class="md-btn md-btn-danger md-btn-sm" (click)="sigh.eliminarRecursoDeEspacio(espacioSeleccionadoId()!, er.idRecurso)">
-                        <span class="material-icons">delete</span> Quitar
-                      </button>
-                    </td>
+                    @if (sigh.isAdmin()) {
+                      <td>
+                        <button class="md-btn md-btn-danger md-btn-sm" (click)="sigh.eliminarRecursoDeEspacio(espacioSeleccionadoId()!, er.idRecurso)">
+                          <span class="material-icons">delete</span> Quitar
+                        </button>
+                      </td>
+                    }
                   </tr>
                 } @empty {
                   <tr>
-                    <td colspan="5">Este espacio no tiene recursos registrados.</td>
+                    <td [attr.colspan]="sigh.isAdmin() ? 5 : 4">Este espacio no tiene recursos registrados.</td>
                   </tr>
                 }
               </tbody>
@@ -354,35 +372,37 @@ import { Curso, PeriodoAcademico, Recurso } from '../../../models/sigh.models';
       }
     }
 
-    <!-- RF-05: CURSOS Y RECURSOS REQUERIDOS -->
+    <!-- RF-05: CURSOS Y RECURSOS REQUERIDOS (Escritura exclusiva de COORDINADOR) -->
     @if (subTab() === 'cursos') {
-      <div class="md-card">
-        <div class="md-card-header">
-          <div>
-            <h3 class="md-card-title"><span class="material-icons">library_add</span> RF-05 | Registrar / Actualizar Curso (RN-09)</h3>
-            <p class="md-card-subtitle">Frecuencia semanal entre 1 y la frecuencia máxima del sistema (P-04: 4 sesiones de 2h).</p>
+      @if (sigh.isCoordinador()) {
+        <div class="md-card">
+          <div class="md-card-header">
+            <div>
+              <h3 class="md-card-title"><span class="material-icons">library_add</span> RF-05 | Registrar / Actualizar Curso (RN-09)</h3>
+              <p class="md-card-subtitle">Frecuencia semanal entre 1 y la frecuencia máxima del sistema (P-04: 4 sesiones de 2h).</p>
+            </div>
+          </div>
+          <div class="md-form-grid">
+            <div class="md-field">
+              <label>Código del Curso</label>
+              <input class="md-input" [(ngModel)]="nuevoCurso.codigo" placeholder="Ej. BD1-101" />
+            </div>
+            <div class="md-field">
+              <label>Nombre del Curso</label>
+              <input class="md-input" [(ngModel)]="nuevoCurso.nombre" placeholder="Ej. Bases de Datos 1" />
+            </div>
+            <div class="md-field">
+              <label>Frecuencia Semanal (1 a 4)</label>
+              <input type="number" min="1" max="4" class="md-input" [(ngModel)]="nuevoCurso.frecuenciaSemanal" />
+            </div>
+            <div>
+              <button class="md-btn md-btn-filled" (click)="guardarCurso()">
+                <span class="material-icons">save</span> Crear Curso
+              </button>
+            </div>
           </div>
         </div>
-        <div class="md-form-grid">
-          <div class="md-field">
-            <label>Código del Curso</label>
-            <input class="md-input" [(ngModel)]="nuevoCurso.codigo" placeholder="Ej. BD1-101" />
-          </div>
-          <div class="md-field">
-            <label>Nombre del Curso</label>
-            <input class="md-input" [(ngModel)]="nuevoCurso.nombre" placeholder="Ej. Bases de Datos 1" />
-          </div>
-          <div class="md-field">
-            <label>Frecuencia Semanal (1 a 4)</label>
-            <input type="number" min="1" max="4" class="md-input" [(ngModel)]="nuevoCurso.frecuenciaSemanal" />
-          </div>
-          <div>
-            <button class="md-btn md-btn-filled" (click)="guardarCurso()">
-              <span class="material-icons">save</span> Crear Curso
-            </button>
-          </div>
-        </div>
-      </div>
+      }
 
       <div class="md-card">
         <div class="md-card-header">
@@ -428,21 +448,23 @@ import { Curso, PeriodoAcademico, Recurso } from '../../../models/sigh.models';
               RF-05 | Recursos exigidos por el Curso #{{ cursoSeleccionadoId() }} (Regla RN-14)
             </h3>
           </div>
-          <div class="md-form-grid" style="margin-bottom: 16px">
-            <div class="md-field">
-              <label>Recurso Exigido</label>
-              <select class="md-select" [(ngModel)]="recursoCursoId">
-                @for (r of sigh.recursos(); track r.idRecurso) {
-                  <option [ngValue]="r.idRecurso">{{ r.nombre }} ({{ r.categoria }})</option>
-                }
-              </select>
+          @if (sigh.isCoordinador()) {
+            <div class="md-form-grid" style="margin-bottom: 16px">
+              <div class="md-field">
+                <label>Recurso Exigido</label>
+                <select class="md-select" [(ngModel)]="recursoCursoId">
+                  @for (r of sigh.recursos(); track r.idRecurso) {
+                    <option [ngValue]="r.idRecurso">{{ r.nombre }} ({{ r.categoria }})</option>
+                  }
+                </select>
+              </div>
+              <div>
+                <button class="md-btn md-btn-filled" (click)="agregarRecursoCurso()">
+                  <span class="material-icons">add</span> Exigir Recurso
+                </button>
+              </div>
             </div>
-            <div>
-              <button class="md-btn md-btn-filled" (click)="agregarRecursoCurso()">
-                <span class="material-icons">add</span> Exigir Recurso
-              </button>
-            </div>
-          </div>
+          }
           <div class="md-table-container">
             <table class="md-table">
               <thead>
@@ -450,7 +472,9 @@ import { Curso, PeriodoAcademico, Recurso } from '../../../models/sigh.models';
                   <th>ID Recurso</th>
                   <th>Recurso</th>
                   <th>Categoría</th>
-                  <th>Acción</th>
+                  @if (sigh.isCoordinador()) {
+                    <th>Acción</th>
+                  }
                 </tr>
               </thead>
               <tbody>
@@ -459,15 +483,17 @@ import { Curso, PeriodoAcademico, Recurso } from '../../../models/sigh.models';
                     <td>#{{ cr.idRecurso }}</td>
                     <td><strong>{{ cr.nombreRecurso }}</strong></td>
                     <td>{{ cr.categoriaRecurso }}</td>
-                    <td>
-                      <button class="md-btn md-btn-danger md-btn-sm" (click)="sigh.eliminarRecursoDeCurso(cursoSeleccionadoId()!, cr.idRecurso)">
-                        <span class="material-icons">delete</span> Quitar
-                      </button>
-                    </td>
+                    @if (sigh.isCoordinador()) {
+                      <td>
+                        <button class="md-btn md-btn-danger md-btn-sm" (click)="sigh.eliminarRecursoDeCurso(cursoSeleccionadoId()!, cr.idRecurso)">
+                          <span class="material-icons">delete</span> Quitar
+                        </button>
+                      </td>
+                    }
                   </tr>
                 } @empty {
                   <tr>
-                    <td colspan="4">Este curso no exige recursos específicos adicionales.</td>
+                    <td [attr.colspan]="sigh.isCoordinador() ? 4 : 3">Este curso no exige recursos específicos adicionales.</td>
                   </tr>
                 }
               </tbody>
@@ -477,32 +503,34 @@ import { Curso, PeriodoAcademico, Recurso } from '../../../models/sigh.models';
       }
     }
 
-    <!-- RF-04: CATÁLOGO DE RECURSOS -->
+    <!-- RF-04: CATÁLOGO DE RECURSOS (Escritura exclusiva de ADMINISTRADOR) -->
     @if (subTab() === 'recursos') {
-      <div class="md-card">
-        <div class="md-card-header">
-          <h3 class="md-card-title"><span class="material-icons">add_moderator</span> RF-04 | Nuevo Recurso Técnico</h3>
+      @if (sigh.isAdmin()) {
+        <div class="md-card">
+          <div class="md-card-header">
+            <h3 class="md-card-title"><span class="material-icons">add_moderator</span> RF-04 | Nuevo Recurso Técnico</h3>
+          </div>
+          <div class="md-form-grid">
+            <div class="md-field">
+              <label>Nombre del Recurso</label>
+              <input class="md-input" [(ngModel)]="nuevoRecurso.nombre" placeholder="Ej. TABLERO INTELIGENTE" />
+            </div>
+            <div class="md-field">
+              <label>Categoría</label>
+              <select class="md-select" [(ngModel)]="nuevoRecurso.categoria">
+                <option value="EQUIPO">EQUIPO</option>
+                <option value="MOBILIARIO">MOBILIARIO</option>
+                <option value="SOFTWARE">SOFTWARE</option>
+              </select>
+            </div>
+            <div>
+              <button class="md-btn md-btn-filled" (click)="guardarRecurso()">
+                <span class="material-icons">add</span> Crear Recurso
+              </button>
+            </div>
+          </div>
         </div>
-        <div class="md-form-grid">
-          <div class="md-field">
-            <label>Nombre del Recurso</label>
-            <input class="md-input" [(ngModel)]="nuevoRecurso.nombre" placeholder="Ej. TABLERO INTELIGENTE" />
-          </div>
-          <div class="md-field">
-            <label>Categoría</label>
-            <select class="md-select" [(ngModel)]="nuevoRecurso.categoria">
-              <option value="EQUIPO">EQUIPO</option>
-              <option value="MOBILIARIO">MOBILIARIO</option>
-              <option value="SOFTWARE">SOFTWARE</option>
-            </select>
-          </div>
-          <div>
-            <button class="md-btn md-btn-filled" (click)="guardarRecurso()">
-              <span class="material-icons">add</span> Crear Recurso
-            </button>
-          </div>
-        </div>
-      </div>
+      }
 
       <div class="md-card">
         <div class="md-card-header">
@@ -567,13 +595,13 @@ import { Curso, PeriodoAcademico, Recurso } from '../../../models/sigh.models';
       </div>
     }
 
-    <!-- RF-08: PARÁMETROS DEL SISTEMA -->
+    <!-- RF-08: PARÁMETROS DEL SISTEMA (Escritura exclusiva de ADMINISTRADOR) -->
     @if (subTab() === 'parametros') {
       <div class="md-card">
         <div class="md-card-header">
           <div>
             <h3 class="md-card-title"><span class="material-icons">tune</span> RF-08 | Parámetros Normativos del Sistema (P-01 a P-04 / RNF-07)</h3>
-            <p class="md-card-subtitle">Los disparadores de PostgreSQL leen estos parámetros en tiempo real para validar cupos y frecuencias.</p>
+            <p class="md-card-subtitle">Los disparadores de la base de datos leen estos parámetros en tiempo real para validar cupos y frecuencias.</p>
           </div>
         </div>
         <div class="md-table-container">
@@ -583,7 +611,9 @@ import { Curso, PeriodoAcademico, Recurso } from '../../../models/sigh.models';
                 <th>Clave</th>
                 <th>Valor Actual</th>
                 <th>Descripción</th>
-                <th>Acción</th>
+                @if (sigh.isAdmin()) {
+                  <th>Acción</th>
+                }
               </tr>
             </thead>
             <tbody>
@@ -591,14 +621,20 @@ import { Curso, PeriodoAcademico, Recurso } from '../../../models/sigh.models';
                 <tr>
                   <td><code>{{ param.clave }}</code></td>
                   <td style="max-width: 140px">
-                    <input type="number" class="md-input" [(ngModel)]="param.valor" />
+                    @if (sigh.isAdmin()) {
+                      <input type="number" class="md-input" [(ngModel)]="param.valor" />
+                    } @else {
+                      <span class="md-chip md-chip-info">{{ param.valor }}</span>
+                    }
                   </td>
                   <td>{{ param.descripcion }}</td>
-                  <td>
-                    <button class="md-btn md-btn-filled md-btn-sm" (click)="sigh.actualizarParametro(param.clave, param.valor, param.descripcion)">
-                      <span class="material-icons">save</span> Guardar
-                    </button>
-                  </td>
+                  @if (sigh.isAdmin()) {
+                    <td>
+                      <button class="md-btn md-btn-filled md-btn-sm" (click)="sigh.actualizarParametro(param.clave, param.valor, param.descripcion)">
+                        <span class="material-icons">save</span> Guardar
+                      </button>
+                    </td>
+                  }
                 </tr>
               }
             </tbody>
@@ -641,6 +677,9 @@ export class CatalogosModuleOrganismComponent implements OnInit {
   recursoCursoId = 1;
 
   ngOnInit(): void {
+    if (this.sigh.isCoordinador()) {
+      this.subTab.set('cursos');
+    }
     const firstCourse = this.sigh.cursos()[0];
     if (firstCourse?.idCurso) this.cursoParaHabilitarId = firstCourse.idCurso;
     const firstRes = this.sigh.recursos()[0];

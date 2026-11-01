@@ -93,11 +93,23 @@ export class SighController {
   readonly usuarios = signal<Usuario[]>([]);
   readonly auditoria = signal<LogAuditoria[]>([]);
 
-  // Propiedades computadas
-  readonly activeUser = computed(() => {
-    const uid = this.api.activeUserId();
-    return this.usuarios().find((u) => u.idUsuario === uid) ?? null;
-  });
+  // Propiedades computadas de sesión y permisos por rol (RF-25 / RNF-04 / 05_roles_permisos.sql)
+  readonly activeUser = computed(() => this.api.authenticatedUser());
+
+  readonly userRole = computed(() =>
+    (this.api.authenticatedUser()?.nombreRol ?? 'ADMINISTRADOR').toUpperCase()
+  );
+
+  readonly isAdmin = computed(() => this.userRole() === 'ADMINISTRADOR');
+  readonly isCoordinador = computed(() => this.userRole() === 'COORDINADOR');
+  readonly isAprobador = computed(() => this.userRole() === 'APROBADOR');
+  readonly isDocente = computed(() => this.userRole() === 'DOCENTE');
+
+  readonly canViewCatalogos = computed(() => this.isAdmin() || this.isCoordinador());
+  readonly canViewPlaneacion = computed(() => this.isAdmin() || this.isCoordinador() || this.isDocente());
+  readonly canViewProgramacion = computed(() => this.isAdmin() || this.isCoordinador() || this.isAprobador());
+  readonly canViewReportes = computed(() => true);
+  readonly canViewSeguridad = computed(() => this.isAdmin());
 
   readonly selectedPeriodo = computed(() => {
     const pid = this.selectedPeriodoId();
@@ -109,27 +121,44 @@ export class SighController {
     return this.versiones().find((v) => v.idVersion === vid) ?? null;
   });
 
-  // Inicialización de datos maestros
+  // Inicialización de datos maestros filtrada según permisos del rol activo en BD
   initializeDashboard(): void {
     this.loading.set(true);
+    this.clearAlert();
+    this.activeModule.set('inicio');
     this.echoService.checkEcho().subscribe({
       error: () => {}
     });
 
     this.cargarCatalogosBase();
-    this.cargarSeguridadYAuditoria();
+    if (this.isAdmin()) {
+      this.cargarSeguridadYAuditoria();
+    }
   }
 
   setModule(tab: SighModuleTab): void {
+    if (tab === 'catalogos' && !this.canViewCatalogos()) return;
+    if (tab === 'planeacion' && !this.canViewPlaneacion()) return;
+    if (tab === 'programacion' && !this.canViewProgramacion()) return;
+    if (tab === 'seguridad' && !this.canViewSeguridad()) return;
+
     this.activeModule.set(tab);
     this.clearAlert();
     if (tab === 'planeacion') {
-      this.cargarSecciones(this.selectedPeriodoId());
+      if (this.isDocente()) {
+        const idDoc = this.api.authenticatedUser()?.idDocente;
+        const pid = this.selectedPeriodoId() || 1;
+        if (idDoc) {
+          this.cargarDisponibilidad(idDoc, pid);
+        }
+      } else {
+        this.cargarSecciones(this.selectedPeriodoId());
+      }
     } else if (tab === 'programacion') {
       this.cargarVersiones(this.selectedPeriodoId());
     } else if (tab === 'reportes') {
       this.cargarTodosLosReportes();
-    } else if (tab === 'seguridad') {
+    } else if (tab === 'seguridad' && this.isAdmin()) {
       this.cargarSeguridadYAuditoria();
     }
   }
@@ -180,19 +209,32 @@ export class SighController {
       error: (err) => this.handleApiError(err, 'Error al cargar períodos')
     });
 
-    this.api.listarTiposContrato().subscribe({ next: (d) => this.tiposContrato.set(d), error: () => {} });
-    this.api.listarDocentes().subscribe({ next: (d) => this.docentes.set(d), error: () => {} });
-    this.api.listarEspacios().subscribe({ next: (d) => this.espacios.set(d), error: () => {} });
-    this.api.listarRecursos().subscribe({ next: (d) => this.recursos.set(d), error: () => {} });
     this.api.listarCursos().subscribe({ next: (d) => this.cursos.set(d), error: () => {} });
     this.api.listarFranjas().subscribe({ next: (d) => this.franjas.set(d), error: () => {} });
-    this.api.listarParametros().subscribe({ next: (d) => this.parametros.set(d), error: () => {} });
+
+    if (this.isAdmin() || this.isCoordinador()) {
+      this.api.listarTiposContrato().subscribe({ next: (d) => this.tiposContrato.set(d), error: () => {} });
+      this.api.listarDocentes().subscribe({ next: (d) => this.docentes.set(d), error: () => {} });
+      this.api.listarEspacios().subscribe({ next: (d) => this.espacios.set(d), error: () => {} });
+      this.api.listarRecursos().subscribe({ next: (d) => this.recursos.set(d), error: () => {} });
+      this.api.listarParametros().subscribe({ next: (d) => this.parametros.set(d), error: () => {} });
+    }
   }
 
   seleccionarPeriodo(idPeriodo: number): void {
     this.selectedPeriodoId.set(Number(idPeriodo));
-    this.cargarSecciones(Number(idPeriodo));
-    this.cargarVersiones(Number(idPeriodo));
+    if (this.isAdmin() || this.isCoordinador()) {
+      this.cargarSecciones(Number(idPeriodo));
+    }
+    if (this.isAdmin() || this.isCoordinador() || this.isAprobador()) {
+      this.cargarVersiones(Number(idPeriodo));
+    } else if (this.isDocente()) {
+      const idDoc = this.api.authenticatedUser()?.idDocente;
+      if (idDoc) {
+        this.cargarDisponibilidad(idDoc, Number(idPeriodo));
+      }
+      this.consultarHorarioReporte({ idPeriodo: Number(idPeriodo), idDocente: idDoc ?? null });
+    }
   }
 
   crearPeriodo(periodo: PeriodoAcademico): void {
@@ -341,6 +383,7 @@ export class SighController {
   // =========================================================================
 
   cargarSecciones(idPeriodo?: number | null, idCurso?: number | null): void {
+    if (!this.isAdmin() && !this.isCoordinador()) return;
     this.api.listarSecciones(idPeriodo, idCurso).subscribe({
       next: (l) => this.secciones.set(l),
       error: (err) => this.handleApiError(err, 'Error al listar secciones')
@@ -396,6 +439,7 @@ export class SighController {
   }
 
   cargarDisponibilidad(idDocente: number, idPeriodo: number): void {
+    if (!this.isCoordinador() && !this.isDocente()) return;
     this.api.listarDisponibilidad(idDocente, idPeriodo).subscribe({
       next: (l) => this.disponibilidades.set(l),
       error: (err) => this.handleApiError(err, 'Error al consultar disponibilidad del docente (RF-11)')
@@ -403,6 +447,7 @@ export class SighController {
   }
 
   toggleDisponibilidadFranja(idDocente: number, idPeriodo: number, idFranja: number): void {
+    if (!this.isDocente()) return;
     const existente = this.disponibilidades().find(
       (d) => d.idDocente === idDocente && d.idPeriodo === idPeriodo && d.idFranja === idFranja && d.tipo === 'NO_DISPONIBLE'
     );
@@ -438,6 +483,7 @@ export class SighController {
   // =========================================================================
 
   cargarVersiones(idPeriodo?: number | null): void {
+    if (this.isDocente()) return;
     this.api.listarVersiones(idPeriodo).subscribe({
       next: (list) => {
         this.versiones.set(list);
@@ -461,10 +507,12 @@ export class SighController {
   }
 
   cargarAsignacionesYGrilla(idVersion: number): void {
-    this.api.listarAsignaciones(idVersion).subscribe({
-      next: (a) => this.asignaciones.set(a),
-      error: () => {}
-    });
+    if (this.isAdmin() || this.isCoordinador()) {
+      this.api.listarAsignaciones(idVersion).subscribe({
+        next: (a) => this.asignaciones.set(a),
+        error: () => {}
+      });
+    }
     this.api.consultarHorario({ idVersion }).subscribe({
       next: (h) => this.horarioGrilla.set(h),
       error: () => {}
@@ -535,7 +583,7 @@ export class SighController {
         this.cargarAsignacionesYGrilla(asignacion.idVersion);
         this.cargarTodosLosReportes();
       },
-      error: (err) => this.handleApiError(err, 'Asignación rechazada por regla de dominio en PostgreSQL')
+      error: (err) => this.handleApiError(err, 'Asignación rechazada por regla de dominio en la Base de Datos')
     });
   }
 
@@ -550,7 +598,7 @@ export class SighController {
         if (vid) this.cargarAsignacionesYGrilla(vid);
         this.cargarTodosLosReportes();
       },
-      error: (err) => this.handleApiError(err, 'Modificación rechazada por regla en PostgreSQL (RF-14)')
+      error: (err) => this.handleApiError(err, 'Modificación rechazada por regla en Base de Datos (RF-14)')
     });
   }
 
@@ -574,15 +622,27 @@ export class SighController {
     const idVersion = this.selectedVersionId();
     const codigoPeriodo = this.selectedPeriodo()?.codigo;
 
+    if (this.isDocente()) {
+      const idDoc = this.api.authenticatedUser()?.idDocente ?? null;
+      this.consultarHorarioReporte({
+        idVersion,
+        idPeriodo: this.selectedPeriodoId(),
+        idDocente: idDoc
+      });
+      return;
+    }
+
     this.consultarHorarioReporte({ idVersion });
     this.api.consultarCargaDocente(idVersion).subscribe({
       next: (d) => this.reporteCargaDocente.set(d),
       error: () => {}
     });
-    this.api.consultarSeccionesRiesgoCierre(codigoPeriodo).subscribe({
-      next: (d) => this.reporteRiesgoCierre.set(d),
-      error: () => {}
-    });
+    if (this.isAdmin() || this.isCoordinador()) {
+      this.api.consultarSeccionesRiesgoCierre(codigoPeriodo).subscribe({
+        next: (d) => this.reporteRiesgoCierre.set(d),
+        error: () => {}
+      });
+    }
     this.api.consultarSeccionesSesionesFaltantes(idVersion).subscribe({
       next: (d) => this.reporteSesionesFaltantes.set(d),
       error: () => {}
@@ -598,6 +658,7 @@ export class SighController {
     idDocente?: number | null;
     idEspacio?: number | null;
     idSeccion?: number | null;
+    idPeriodo?: number | null;
   }): void {
     this.api.consultarHorario(filtros).subscribe({
       next: (d) => this.reporteHorario.set(d),
@@ -617,6 +678,7 @@ export class SighController {
   // =========================================================================
 
   cargarSeguridadYAuditoria(): void {
+    if (!this.isAdmin()) return;
     this.api.listarRoles().subscribe({ next: (r) => this.roles.set(r), error: () => {} });
     this.api.listarUsuarios().subscribe({ next: (u) => this.usuarios.set(u), error: () => {} });
     this.filtrarAuditoria({});
@@ -643,6 +705,7 @@ export class SighController {
   }
 
   filtrarAuditoria(filtros: { tablaAfectada?: string | null; accion?: string | null; idUsuario?: number | null }): void {
+    if (!this.isAdmin()) return;
     this.api.listarAuditoria(filtros).subscribe({
       next: (logs) => this.auditoria.set(logs),
       error: (err) => this.handleApiError(err, 'Error al consultar bitácora de auditoría (RF-24)')

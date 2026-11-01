@@ -34,7 +34,7 @@ import { SeguridadModuleOrganismComponent } from '../../organisms/seguridad-modu
           </div>
           <div>
             <div class="app-title">SIGH — Gestión de Horarios Académicos</div>
-            <div class="app-subtitle">Sistema Integrado de Gestión de Horarios · PostgreSQL RDBMS</div>
+            <div class="app-subtitle">Sistema Integrado de Gestión de Horarios</div>
           </div>
         </div>
 
@@ -62,10 +62,6 @@ import { SeguridadModuleOrganismComponent } from '../../organisms/seguridad-modu
             </div>
           }
 
-          <button type="button" class="md-btn md-btn-tonal md-btn-sm" (click)="reverificarEcho()">
-            <span class="material-icons">sync</span> Verificar /echo
-          </button>
-
           <button type="button" class="md-btn md-btn-danger md-btn-sm" (click)="cerrarSesion()">
             <span class="material-icons">logout</span> Cerrar Sesión
           </button>
@@ -81,60 +77,70 @@ import { SeguridadModuleOrganismComponent } from '../../organisms/seguridad-modu
               [class.active]="sigh.activeModule() === 'inicio'"
               (click)="sigh.setModule('inicio')">
               <span class="material-icons">dashboard</span>
-              <span>00. Inicio y Estado BD</span>
+              <span>00. Inicio</span>
             </button>
 
-            <button
-              class="drawer-item"
-              [class.active]="sigh.activeModule() === 'catalogos'"
-              (click)="sigh.setModule('catalogos')">
-              <span class="material-icons">folder_special</span>
-              <span>01. Catálogos (RF-01..08)</span>
-            </button>
+            @if (sigh.canViewCatalogos()) {
+              <button
+                class="drawer-item"
+                [class.active]="sigh.activeModule() === 'catalogos'"
+                (click)="sigh.setModule('catalogos')">
+                <span class="material-icons">folder_special</span>
+                <span>01. Catálogos (RF-01..08)</span>
+              </button>
+            }
 
-            <button
-              class="drawer-item"
-              [class.active]="sigh.activeModule() === 'planeacion'"
-              (click)="sigh.setModule('planeacion')">
-              <span class="material-icons">assignment</span>
-              <span>02. Planeación (RF-09..11)</span>
-            </button>
+            @if (sigh.canViewPlaneacion()) {
+              <button
+                class="drawer-item"
+                [class.active]="sigh.activeModule() === 'planeacion'"
+                (click)="sigh.setModule('planeacion')">
+                <span class="material-icons">assignment</span>
+                <span>02. Planeación ({{ sigh.isDocente() ? 'RF-11' : 'RF-09..11' }})</span>
+              </button>
+            }
 
-            <button
-              class="drawer-item"
-              [class.active]="sigh.activeModule() === 'programacion'"
-              (click)="sigh.setModule('programacion')">
-              <span class="material-icons">view_timeline</span>
-              <span>03. Programación (RF-12..17)</span>
-            </button>
+            @if (sigh.canViewProgramacion()) {
+              <button
+                class="drawer-item"
+                [class.active]="sigh.activeModule() === 'programacion'"
+                (click)="sigh.setModule('programacion')">
+                <span class="material-icons">view_timeline</span>
+                <span>03. Programación (RF-12..17)</span>
+              </button>
+            }
 
-            <button
-              class="drawer-item"
-              [class.active]="sigh.activeModule() === 'reportes'"
-              (click)="sigh.setModule('reportes')">
-              <span class="material-icons">analytics</span>
-              <span>04. Reportes (RF-19..22)</span>
-            </button>
+            @if (sigh.canViewReportes()) {
+              <button
+                class="drawer-item"
+                [class.active]="sigh.activeModule() === 'reportes'"
+                (click)="sigh.setModule('reportes')">
+                <span class="material-icons">analytics</span>
+                <span>04. Reportes ({{ sigh.isDocente() ? 'RF-19' : 'RF-19..22' }})</span>
+              </button>
+            }
 
-            <button
-              class="drawer-item"
-              [class.active]="sigh.activeModule() === 'seguridad'"
-              (click)="sigh.setModule('seguridad')">
-              <span class="material-icons">admin_panel_settings</span>
-              <span>05. Seguridad (RF-23..25)</span>
-            </button>
+            @if (sigh.canViewSeguridad()) {
+              <button
+                class="drawer-item"
+                [class.active]="sigh.activeModule() === 'seguridad'"
+                (click)="sigh.setModule('seguridad')">
+                <span class="material-icons">admin_panel_settings</span>
+                <span>05. Seguridad (RF-23..25)</span>
+              </button>
+            }
           </nav>
 
           <div class="drawer-footer">
             @if (connectionController.echoData()?.databaseConnected === true) {
               <div class="db-pill">
                 <span class="dot-online"></span>
-                <span>PostgreSQL Activo</span>
+                <span>Conexión Activa ({{ sigh.userRole() }})</span>
               </div>
             } @else {
               <div class="db-pill" style="color: #991b1b">
                 <span class="dot-online" style="background: #ef4444"></span>
-                <span>PostgreSQL Sin Verificar</span>
+                <span>Sin Conexión</span>
               </div>
             }
             <small>Arquitectura MVC + Atomic &amp; Material Design</small>
@@ -148,58 +154,70 @@ import { SeguridadModuleOrganismComponent } from '../../organisms/seguridad-modu
             (dismiss)="sigh.clearAlert()">
           </app-rule-alert-molecule>
 
-          <!-- 00. MÓDULO DE INICIO Y ESTADO DE CONEXIÓN (/echo) -->
+          <!-- 00. MÓDULO DE INICIO -->
           @if (sigh.activeModule() === 'inicio') {
             <div class="md-card hero-card">
               <div class="hero-left">
                 @if (connectionController.echoData()?.databaseConnected === true) {
                   <span class="md-chip md-chip-success">
                     <span class="material-icons" style="font-size: 16px">storage</span>
-                    CONECTADO A POSTGRESQL (/api/echo)
+                    CONEXIÓN ACTIVA — ROL: {{ sigh.userRole() }}
                   </span>
                 } @else {
                   <span class="md-chip md-chip-error">
                     <span class="material-icons" style="font-size: 16px">error_outline</span>
-                    SIN CONEXIÓN VERIFICADA (/api/echo)
+                    SIN CONEXIÓN VERIFICADA
                   </span>
                 }
                 <h1 class="hero-title">Panel General — SIGH</h1>
                 <p class="hero-desc">
-                  {{ connectionController.echoData()?.message || 'Estado de conexión pendiente de verificación con /api/echo.' }}
+                  Bienvenido al Sistema Integrado de Gestión de Horarios Académicos. Selecciona un módulo en el menú lateral o utiliza las acciones directas para gestionar la programación institucional.
                 </p>
                 <div class="hero-actions">
-                  <button class="md-btn md-btn-filled" (click)="sigh.setModule('programacion')">
-                    <span class="material-icons">view_timeline</span> Ir a Programación de Horarios (CU-07)
-                  </button>
-                  <button class="md-btn md-btn-tonal" (click)="sigh.setModule('catalogos')">
-                    <span class="material-icons">folder_special</span> Gestionar Catálogos (CU-01)
-                  </button>
+                  @if (sigh.canViewProgramacion()) {
+                    <button class="md-btn md-btn-filled" (click)="sigh.setModule('programacion')">
+                      <span class="material-icons">view_timeline</span> Ir a Programación de Horarios
+                    </button>
+                  }
+                  @if (sigh.canViewPlaneacion()) {
+                    <button class="md-btn md-btn-tonal" (click)="sigh.setModule('planeacion')">
+                      <span class="material-icons">assignment</span>
+                      {{ sigh.isDocente() ? 'Gestionar Mi Disponibilidad (RF-11)' : 'Ir a Planeación Académica' }}
+                    </button>
+                  }
+                  @if (sigh.canViewCatalogos()) {
+                    <button class="md-btn md-btn-tonal" (click)="sigh.setModule('catalogos')">
+                      <span class="material-icons">folder_special</span> Gestionar Catálogos
+                    </button>
+                  }
                   <button class="md-btn md-btn-outlined" (click)="sigh.setModule('reportes')">
-                    <span class="material-icons">analytics</span> Ver Consultas y Reportes (CU-11)
+                    <span class="material-icons">analytics</span> Ver Consultas y Reportes
                   </button>
                 </div>
               </div>
             </div>
 
-            <!-- KPIs del Sistema SIGH -->
+            <!-- KPIs del Sistema SIGH (filtrados según permisos del rol activo) -->
             <div class="kpi-grid">
-              <div class="kpi-card" (click)="sigh.setModule('catalogos')">
-                <span class="material-icons kpi-icon">school</span>
-                <div>
-                  <div class="kpi-value">{{ sigh.docentes().length }}</div>
-                  <div class="kpi-label">Docentes (RF-02)</div>
+              @if (sigh.canViewCatalogos()) {
+                <div class="kpi-card" (click)="sigh.setModule('catalogos')">
+                  <span class="material-icons kpi-icon">school</span>
+                  <div>
+                    <div class="kpi-value">{{ sigh.docentes().length }}</div>
+                    <div class="kpi-label">Docentes (RF-02)</div>
+                  </div>
                 </div>
-              </div>
 
-              <div class="kpi-card" (click)="sigh.setModule('catalogos')">
-                <span class="material-icons kpi-icon">meeting_room</span>
-                <div>
-                  <div class="kpi-value">{{ sigh.espacios().length }}</div>
-                  <div class="kpi-label">Espacios Físicos (RF-03)</div>
+                <div class="kpi-card" (click)="sigh.setModule('catalogos')">
+                  <span class="material-icons kpi-icon">meeting_room</span>
+                  <div>
+                    <div class="kpi-value">{{ sigh.espacios().length }}</div>
+                    <div class="kpi-label">Espacios Físicos (RF-03)</div>
+                  </div>
                 </div>
-              </div>
+              }
 
-              <div class="kpi-card" (click)="sigh.setModule('catalogos')">
+              <div class="kpi-card" (click)="sigh.canViewCatalogos() ? sigh.setModule('catalogos') : sigh.setModule('reportes')">
                 <span class="material-icons kpi-icon">menu_book</span>
                 <div>
                   <div class="kpi-value">{{ sigh.cursos().length }}</div>
@@ -207,35 +225,44 @@ import { SeguridadModuleOrganismComponent } from '../../organisms/seguridad-modu
                 </div>
               </div>
 
-              <div class="kpi-card" (click)="sigh.setModule('planeacion')">
-                <span class="material-icons kpi-icon">class</span>
-                <div>
-                  <div class="kpi-value">{{ sigh.secciones().length }}</div>
-                  <div class="kpi-label">Secciones Periodo (RF-09)</div>
+              @if (sigh.isAdmin() || sigh.isCoordinador()) {
+                <div class="kpi-card" (click)="sigh.setModule('planeacion')">
+                  <span class="material-icons kpi-icon">class</span>
+                  <div>
+                    <div class="kpi-value">{{ sigh.secciones().length }}</div>
+                    <div class="kpi-label">Secciones Periodo (RF-09)</div>
+                  </div>
                 </div>
-              </div>
+              }
 
-              <div class="kpi-card" (click)="sigh.setModule('programacion')">
-                <span class="material-icons kpi-icon">event_available</span>
-                <div>
-                  <div class="kpi-value">{{ sigh.horarioGrilla().length }}</div>
-                  <div class="kpi-label">Sesiones en Versión (RF-13)</div>
+              @if (sigh.canViewProgramacion()) {
+                <div class="kpi-card" (click)="sigh.setModule('programacion')">
+                  <span class="material-icons kpi-icon">event_available</span>
+                  <div>
+                    <div class="kpi-value">{{ sigh.horarioGrilla().length }}</div>
+                    <div class="kpi-label">Sesiones en Versión (RF-13)</div>
+                  </div>
                 </div>
-              </div>
+              }
 
-              <div class="kpi-card" (click)="sigh.setModule('seguridad')">
-                <span class="material-icons kpi-icon">history_edu</span>
-                <div>
-                  <div class="kpi-value">{{ sigh.auditoria().length }}</div>
-                  <div class="kpi-label">Registros Bitácora (RF-24)</div>
+              @if (sigh.canViewSeguridad()) {
+                <div class="kpi-card" (click)="sigh.setModule('seguridad')">
+                  <span class="material-icons kpi-icon">history_edu</span>
+                  <div>
+                    <div class="kpi-value">{{ sigh.auditoria().length }}</div>
+                    <div class="kpi-label">Registros Bitácora (RF-24)</div>
+                  </div>
                 </div>
-              </div>
+              }
             </div>
 
-            <!-- Resumen de Módulos del Documento de Requisitos -->
+            <!-- Resumen de Módulos habilitados para el Rol -->
             <div class="md-card">
               <div class="md-card-header">
-                <h3 class="md-card-title"><span class="material-icons">fact_check</span> Cobertura de Módulos SIGH (RF-01 a RF-25 y Reglas RN-01 a RN-22)</h3>
+                <h3 class="md-card-title">
+                  <span class="material-icons">fact_check</span>
+                  Módulos Habilitados para tu Rol ({{ sigh.userRole() }} — RF-25 / RNF-04)
+                </h3>
               </div>
               <div class="md-table-container">
                 <table class="md-table">
@@ -243,47 +270,57 @@ import { SeguridadModuleOrganismComponent } from '../../organisms/seguridad-modu
                     <tr>
                       <th>Módulo</th>
                       <th>Requisitos Funcionales</th>
-                      <th>Casos de Uso</th>
-                      <th>Reglas de Negocio Verificadas en BD</th>
+                      <th>Permisos Activos para {{ sigh.userRole() }}</th>
                       <th>Acceso</th>
                     </tr>
                   </thead>
                   <tbody>
-                    <tr>
-                      <td><strong>01. Catálogos</strong></td>
-                      <td>RF-01 a RF-08</td>
-                      <td>CU-01, CU-03, CU-05</td>
-                      <td>RN-06, RN-07, RN-08, RN-09, RN-12, RN-14, RN-19</td>
-                      <td><button class="md-btn md-btn-tonal md-btn-sm" (click)="sigh.setModule('catalogos')">Abrir</button></td>
-                    </tr>
-                    <tr>
-                      <td><strong>02. Planeación</strong></td>
-                      <td>RF-09 a RF-11</td>
-                      <td>CU-06, CU-09</td>
-                      <td>RN-10 (Sobrecupo), RN-11 (Cierre), RN-13, RN-19</td>
-                      <td><button class="md-btn md-btn-tonal md-btn-sm" (click)="sigh.setModule('planeacion')">Abrir</button></td>
-                    </tr>
-                    <tr>
-                      <td><strong>03. Programación</strong></td>
-                      <td>RF-12 a RF-17</td>
-                      <td>CU-04, CU-07, CU-08, CU-10</td>
-                      <td>RN-01 a RN-17 (Cruces, Aforo, Contrato, Flujo Aval)</td>
-                      <td><button class="md-btn md-btn-tonal md-btn-sm" (click)="sigh.setModule('programacion')">Abrir</button></td>
-                    </tr>
+                    @if (sigh.canViewCatalogos()) {
+                      <tr>
+                        <td><strong>01. Catálogos</strong></td>
+                        <td>RF-01 a RF-08</td>
+                        <td>
+                          {{ sigh.isAdmin() ? 'Gestión de Períodos, Recursos, Dotación de Espacios y Parámetros (CU-01)' : 'Gestión de Cursos, Requisitos Técnicos y Habilitación Docente (CU-05)' }}
+                        </td>
+                        <td><button class="md-btn md-btn-tonal md-btn-sm" (click)="sigh.setModule('catalogos')">Abrir</button></td>
+                      </tr>
+                    }
+                    @if (sigh.canViewPlaneacion()) {
+                      <tr>
+                        <td><strong>02. Planeación</strong></td>
+                        <td>{{ sigh.isDocente() ? 'RF-11' : 'RF-09 a RF-11' }}</td>
+                        <td>
+                          {{ sigh.isDocente() ? 'Registro y edición de tu propia disponibilidad horaria (RN-19)' : sigh.isAdmin() ? 'Registro de matrícula real de secciones desde sistemas fuente (RF-10)' : 'Apertura de secciones, sobrecupos justificados (RN-10), cierre y consulta de disponibilidad' }}
+                        </td>
+                        <td><button class="md-btn md-btn-tonal md-btn-sm" (click)="sigh.setModule('planeacion')">Abrir</button></td>
+                      </tr>
+                    }
+                    @if (sigh.canViewProgramacion()) {
+                      <tr>
+                        <td><strong>03. Programación</strong></td>
+                        <td>RF-12 a RF-17</td>
+                        <td>
+                          {{ sigh.isCoordinador() ? 'Crear versión, asignar/mover/eliminar sesiones y enviar a aprobación (CU-07)' : sigh.isAprobador() ? 'Avalar versión o devolver a edición (RF-16 / CU-08)' : 'Sincronizar versión avalada con repositorio documental (RF-17 / CU-04)' }}
+                        </td>
+                        <td><button class="md-btn md-btn-tonal md-btn-sm" (click)="sigh.setModule('programacion')">Abrir</button></td>
+                      </tr>
+                    }
                     <tr>
                       <td><strong>04. Consultas y Reportes</strong></td>
-                      <td>RF-19 a RF-22</td>
-                      <td>CU-11</td>
-                      <td>RN-05, RN-20 (Días consecutivos), RN-21 (Riesgo cierre), RN-22</td>
+                      <td>{{ sigh.isDocente() ? 'RF-19' : 'RF-19 a RF-22' }}</td>
+                      <td>
+                        {{ sigh.isDocente() ? 'Consulta de horario académico publicado (v_horario)' : 'Consulta de horarios, carga docente vs contrato y alertas de programación (CU-11)' }}
+                      </td>
                       <td><button class="md-btn md-btn-tonal md-btn-sm" (click)="sigh.setModule('reportes')">Abrir</button></td>
                     </tr>
-                    <tr>
-                      <td><strong>05. Seguridad y Auditoría</strong></td>
-                      <td>RF-23 a RF-25</td>
-                      <td>CU-02</td>
-                      <td>RN-18 (Bitácora solo inserción), RN-19, RNF-04, RNF-06</td>
-                      <td><button class="md-btn md-btn-tonal md-btn-sm" (click)="sigh.setModule('seguridad')">Abrir</button></td>
-                    </tr>
+                    @if (sigh.canViewSeguridad()) {
+                      <tr>
+                        <td><strong>05. Seguridad y Auditoría</strong></td>
+                        <td>RF-23 a RF-25</td>
+                        <td>Gestión de usuarios, roles y consulta de bitácora inmutable log_auditoria (CU-02)</td>
+                        <td><button class="md-btn md-btn-tonal md-btn-sm" (click)="sigh.setModule('seguridad')">Abrir</button></td>
+                      </tr>
+                    }
                   </tbody>
                 </table>
               </div>
@@ -291,17 +328,17 @@ import { SeguridadModuleOrganismComponent } from '../../organisms/seguridad-modu
           }
 
           <!-- 01. CATÁLOGOS -->
-          @if (sigh.activeModule() === 'catalogos') {
+          @if (sigh.activeModule() === 'catalogos' && sigh.canViewCatalogos()) {
             <app-catalogos-module-organism></app-catalogos-module-organism>
           }
 
           <!-- 02. PLANEACIÓN -->
-          @if (sigh.activeModule() === 'planeacion') {
+          @if (sigh.activeModule() === 'planeacion' && sigh.canViewPlaneacion()) {
             <app-planeacion-module-organism></app-planeacion-module-organism>
           }
 
           <!-- 03. PROGRAMACIÓN DE HORARIOS -->
-          @if (sigh.activeModule() === 'programacion') {
+          @if (sigh.activeModule() === 'programacion' && sigh.canViewProgramacion()) {
             <app-programacion-module-organism></app-programacion-module-organism>
           }
 
@@ -311,7 +348,7 @@ import { SeguridadModuleOrganismComponent } from '../../organisms/seguridad-modu
           }
 
           <!-- 05. SEGURIDAD Y AUDITORÍA -->
-          @if (sigh.activeModule() === 'seguridad') {
+          @if (sigh.activeModule() === 'seguridad' && sigh.canViewSeguridad()) {
             <app-seguridad-module-organism></app-seguridad-module-organism>
           }
         </main>
@@ -545,10 +582,6 @@ export class WelcomePageComponent implements OnInit {
 
   ngOnInit(): void {
     this.sigh.initializeDashboard();
-  }
-
-  reverificarEcho(): void {
-    this.router.navigate(['/']);
   }
 
   cerrarSesion(): void {

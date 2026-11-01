@@ -10,64 +10,70 @@ import { Franja, Seccion } from '../../../models/sigh.models';
   imports: [CommonModule, FormsModule],
   template: `
     <div class="md-tabs">
-      <button class="md-tab" [class.active]="subTab() === 'secciones'" (click)="subTab.set('secciones')">
-        <span class="material-icons">class</span> RF-09 / RF-10 Secciones, Sobrecupos y Matrícula Real
-      </button>
-      <button class="md-tab" [class.active]="subTab() === 'disponibilidad'" (click)="abrirTabDisponibilidad()">
-        <span class="material-icons">event_available</span> RF-11 Disponibilidad Horaria de Docentes
-      </button>
+      @if (sigh.isAdmin() || sigh.isCoordinador()) {
+        <button class="md-tab" [class.active]="subTab() === 'secciones'" (click)="subTab.set('secciones')">
+          <span class="material-icons">class</span> RF-09 / RF-10 Secciones, Sobrecupos y Matrícula Real
+        </button>
+      }
+      @if (sigh.isCoordinador() || sigh.isDocente()) {
+        <button class="md-tab" [class.active]="subTab() === 'disponibilidad'" (click)="abrirTabDisponibilidad()">
+          <span class="material-icons">event_available</span> RF-11 Disponibilidad Horaria de Docentes
+        </button>
+      }
     </div>
 
     <!-- RF-09 y RF-10: SECCIONES, MATRÍCULA REAL Y CIERRE -->
-    @if (subTab() === 'secciones') {
-      <div class="md-card">
-        <div class="md-card-header">
-          <div>
-            <h3 class="md-card-title"><span class="material-icons">add_box</span> RF-09 | Abrir Nueva Sección en Período</h3>
-            <p class="md-card-subtitle">
-              Regla RN-10: El cupo máximo debe estar entre el mínimo (10) y 44. Si supera el cupo estándar (40), PostgreSQL exige justificación de sobrecupo.
-            </p>
+    @if (subTab() === 'secciones' && (sigh.isAdmin() || sigh.isCoordinador())) {
+      @if (sigh.isCoordinador()) {
+        <div class="md-card">
+          <div class="md-card-header">
+            <div>
+              <h3 class="md-card-title"><span class="material-icons">add_box</span> RF-09 | Abrir Nueva Sección en Período</h3>
+              <p class="md-card-subtitle">
+                Regla RN-10: El cupo máximo debe estar entre el mínimo (10) y 44. Si supera el cupo estándar (40), la base de datos exige justificación de sobrecupo.
+              </p>
+            </div>
+          </div>
+          <div class="md-form-grid">
+            <div class="md-field">
+              <label>Curso</label>
+              <select class="md-select" [(ngModel)]="nuevaSeccion.idCurso">
+                @for (c of sigh.cursos(); track c.idCurso) {
+                  <option [ngValue]="c.idCurso">{{ c.codigo }} - {{ c.nombre }}</option>
+                }
+              </select>
+            </div>
+            <div class="md-field">
+              <label>Número de Sección (S-13)</label>
+              <input type="number" min="1" class="md-input" [(ngModel)]="nuevaSeccion.numero" />
+            </div>
+            <div class="md-field">
+              <label>Cupo Mínimo (P-03)</label>
+              <input type="number" min="1" class="md-input" [(ngModel)]="nuevaSeccion.cupoMin" />
+            </div>
+            <div class="md-field">
+              <label>Cupo Máximo (P-01: 40 / P-02: hasta 44)</label>
+              <input type="number" min="1" max="50" class="md-input" [(ngModel)]="nuevaSeccion.cupoMax" />
+            </div>
+            <div class="md-field">
+              <label>Matrícula Proyectada</label>
+              <input type="number" min="0" class="md-input" [(ngModel)]="nuevaSeccion.matriculaProyectada" />
+            </div>
+            <div class="md-field" style="grid-column: span 2">
+              <label>Justificación de Sobrecupo (Obligatoria si Cupo Máximo &gt; 40 — RN-10)</label>
+              <input
+                class="md-input"
+                [(ngModel)]="nuevaSeccion.justificacionSobrecupo"
+                placeholder="Ej. Alta demanda autorizada por coordinación académica" />
+            </div>
+            <div>
+              <button class="md-btn md-btn-filled" (click)="crearSeccion()">
+                <span class="material-icons">add_circle</span> Abrir Sección
+              </button>
+            </div>
           </div>
         </div>
-        <div class="md-form-grid">
-          <div class="md-field">
-            <label>Curso</label>
-            <select class="md-select" [(ngModel)]="nuevaSeccion.idCurso">
-              @for (c of sigh.cursos(); track c.idCurso) {
-                <option [ngValue]="c.idCurso">{{ c.codigo }} - {{ c.nombre }}</option>
-              }
-            </select>
-          </div>
-          <div class="md-field">
-            <label>Número de Sección (S-13)</label>
-            <input type="number" min="1" class="md-input" [(ngModel)]="nuevaSeccion.numero" />
-          </div>
-          <div class="md-field">
-            <label>Cupo Mínimo (P-03)</label>
-            <input type="number" min="1" class="md-input" [(ngModel)]="nuevaSeccion.cupoMin" />
-          </div>
-          <div class="md-field">
-            <label>Cupo Máximo (P-01: 40 / P-02: hasta 44)</label>
-            <input type="number" min="1" max="50" class="md-input" [(ngModel)]="nuevaSeccion.cupoMax" />
-          </div>
-          <div class="md-field">
-            <label>Matrícula Proyectada</label>
-            <input type="number" min="0" class="md-input" [(ngModel)]="nuevaSeccion.matriculaProyectada" />
-          </div>
-          <div class="md-field" style="grid-column: span 2">
-            <label>Justificación de Sobrecupo (Obligatoria si Cupo Máximo &gt; 40 — RN-10)</label>
-            <input
-              class="md-input"
-              [(ngModel)]="nuevaSeccion.justificacionSobrecupo"
-              placeholder="Ej. Alta demanda autorizada por coordinación académica" />
-          </div>
-          <div>
-            <button class="md-btn md-btn-filled" (click)="crearSeccion()">
-              <span class="material-icons">add_circle</span> Abrir Sección
-            </button>
-          </div>
-        </div>
-      </div>
+      }
 
       <div class="md-card">
         <div class="md-card-header">
@@ -76,7 +82,9 @@ import { Franja, Seccion } from '../../../models/sigh.models';
               <span class="material-icons">view_list</span>
               RF-09 & RF-10 | Secciones del Período ({{ sigh.secciones().length }})
             </h3>
-            <p class="md-card-subtitle">Registra la matrícula real (RF-10) o cierra las secciones que no alcancen el cupo mínimo (RN-11, RN-21).</p>
+            <p class="md-card-subtitle">
+              {{ sigh.isAdmin() ? 'Registra la matrícula real desde los sistemas fuente (CU-03 / RF-10).' : 'Registra la matrícula real (RF-10) o cierra las secciones que no alcancen el cupo mínimo (RN-11, RN-21).' }}
+            </p>
           </div>
         </div>
         <div class="md-table-container">
@@ -91,7 +99,9 @@ import { Franja, Seccion } from '../../../models/sigh.models';
                 <th>Matrícula Real (RF-10)</th>
                 <th>Sobrecupo (RN-10)</th>
                 <th>Estado</th>
-                <th>Acciones RF-10</th>
+                @if (sigh.isCoordinador()) {
+                  <th>Acciones RF-10</th>
+                }
               </tr>
             </thead>
             <tbody>
@@ -135,21 +145,23 @@ import { Franja, Seccion } from '../../../models/sigh.models';
                       </span>
                     }
                   </td>
-                  <td>
-                    @if (s.estado === 'ABIERTA') {
-                      <button class="md-btn md-btn-danger md-btn-sm" (click)="sigh.cerrarSeccion(s.idSeccion!)">
-                        <span class="material-icons">lock</span> Cerrar
-                      </button>
-                    } @else {
-                      <button class="md-btn md-btn-outlined md-btn-sm" (click)="sigh.reabrirSeccion(s.idSeccion!)">
-                        <span class="material-icons">lock_open</span> Reabrir
-                      </button>
-                    }
-                  </td>
+                  @if (sigh.isCoordinador()) {
+                    <td>
+                      @if (s.estado === 'ABIERTA') {
+                        <button class="md-btn md-btn-danger md-btn-sm" (click)="sigh.cerrarSeccion(s.idSeccion!)">
+                          <span class="material-icons">lock</span> Cerrar
+                        </button>
+                      } @else {
+                        <button class="md-btn md-btn-outlined md-btn-sm" (click)="sigh.reabrirSeccion(s.idSeccion!)">
+                          <span class="material-icons">lock_open</span> Reabrir
+                        </button>
+                      }
+                    </td>
+                  }
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="9">No hay secciones registradas para este período.</td>
+                  <td [attr.colspan]="sigh.isCoordinador() ? 9 : 8">No hay secciones registradas para este período.</td>
                 </tr>
               }
             </tbody>
@@ -158,8 +170,8 @@ import { Franja, Seccion } from '../../../models/sigh.models';
       </div>
     }
 
-    <!-- RF-11: DISPONIBILIDAD HORARIA DOCENTE -->
-    @if (subTab() === 'disponibilidad') {
+    <!-- RF-11: DISPONIBILIDAD HORARIA DOCENTE (Edición exclusiva del propio DOCENTE RN-19; Lectura para COORDINADOR) -->
+    @if (subTab() === 'disponibilidad' && (sigh.isCoordinador() || sigh.isDocente())) {
       <div class="md-card">
         <div class="md-card-header">
           <div>
@@ -168,18 +180,29 @@ import { Franja, Seccion } from '../../../models/sigh.models';
               RF-11 | Matriz de Disponibilidad Horaria por Docente y Período (RN-13, RN-19, S-04)
             </h3>
             <p class="md-card-subtitle">
-              Haz clic sobre cualquier franja para alternar entre <strong>DISPONIBLE</strong> y <strong>NO DISPONIBLE</strong>. La BD impedirá asignar sesiones en franjas marcadas como NO DISPONIBLE (RN-13).
+              @if (sigh.isDocente()) {
+                Haz clic sobre cualquier franja para alternar entre <strong>DISPONIBLE</strong> y <strong>NO DISPONIBLE</strong>. Solo puedes ver y modificar tu propia disponibilidad (RN-19 / RLS).
+              } @else {
+                Modo consulta para Coordinación Académica: visualiza las franjas marcadas como <strong>NO DISPONIBLE</strong> por cada docente antes de programar (RN-09, RN-19).
+              }
             </p>
           </div>
           <div style="min-width: 280px">
-            <label style="font-size: 0.78rem; font-weight: 500; color: var(--md-text-secondary); display: block; margin-bottom: 4px">
-              Docente a configurar:
-            </label>
-            <select class="md-select" [ngModel]="docenteDispId()" (ngModelChange)="cambiarDocenteDisponibilidad($event)">
-              @for (d of sigh.docentes(); track d.idDocente) {
-                <option [ngValue]="d.idDocente">#{{ d.idDocente }} - {{ d.nombres }} {{ d.apellidos }} ({{ d.nombreTipoContrato }})</option>
-              }
-            </select>
+            @if (sigh.isDocente()) {
+              <span class="md-chip md-chip-info">
+                <span class="material-icons" style="font-size: 16px">person</span>
+                Docente: {{ sigh.activeUser()?.nombreDocente || sigh.activeUser()?.nombreUsuario }} (#{{ docenteDispId() }})
+              </span>
+            } @else {
+              <label style="font-size: 0.78rem; font-weight: 500; color: var(--md-text-secondary); display: block; margin-bottom: 4px">
+                Docente a consultar:
+              </label>
+              <select class="md-select" [ngModel]="docenteDispId()" (ngModelChange)="cambiarDocenteDisponibilidad($event)">
+                @for (d of sigh.docentes(); track d.idDocente) {
+                  <option [ngValue]="d.idDocente">#{{ d.idDocente }} - {{ d.nombres }} {{ d.apellidos }} ({{ d.nombreTipoContrato }})</option>
+                }
+              </select>
+            }
           </div>
         </div>
 
@@ -202,14 +225,21 @@ import { Franja, Seccion } from '../../../models/sigh.models';
                     <td>
                       @if (franja) {
                         @let noDisp = esNoDisponible(franja.idFranja);
-                        <button
-                          type="button"
-                          class="md-btn md-btn-sm"
-                          [ngClass]="noDisp ? 'md-btn-danger' : 'md-btn-success'"
-                          (click)="toggleFranja(franja.idFranja)">
-                          <span class="material-icons">{{ noDisp ? 'block' : 'check_circle' }}</span>
-                          {{ noDisp ? 'NO DISPONIBLE' : 'DISPONIBLE' }}
-                        </button>
+                        @if (sigh.isDocente()) {
+                          <button
+                            type="button"
+                            class="md-btn md-btn-sm"
+                            [ngClass]="noDisp ? 'md-btn-danger' : 'md-btn-success'"
+                            (click)="toggleFranja(franja.idFranja)">
+                            <span class="material-icons">{{ noDisp ? 'block' : 'check_circle' }}</span>
+                            {{ noDisp ? 'NO DISPONIBLE' : 'DISPONIBLE' }}
+                          </button>
+                        } @else {
+                          <span class="md-chip" [ngClass]="noDisp ? 'md-chip-error' : 'md-chip-success'">
+                            <span class="material-icons" style="font-size: 14px">{{ noDisp ? 'block' : 'check_circle' }}</span>
+                            {{ noDisp ? 'NO DISPONIBLE' : 'DISPONIBLE' }}
+                          </span>
+                        }
                       } @else {
                         <span style="color: #cbd5e1; font-size: 0.75rem">—</span>
                       }
@@ -256,8 +286,15 @@ export class PlaneacionModuleOrganismComponent implements OnInit {
   ngOnInit(): void {
     const firstCourse = this.sigh.cursos()[0];
     if (firstCourse?.idCurso) this.nuevaSeccion.idCurso = firstCourse.idCurso;
-    const firstDoc = this.sigh.docentes()[0];
-    if (firstDoc?.idDocente) this.docenteDispId.set(firstDoc.idDocente);
+
+    if (this.sigh.isDocente()) {
+      const ownDocenteId = this.sigh.activeUser()?.idDocente ?? 1;
+      this.docenteDispId.set(ownDocenteId);
+      this.abrirTabDisponibilidad();
+    } else {
+      const firstDoc = this.sigh.docentes()[0];
+      if (firstDoc?.idDocente) this.docenteDispId.set(firstDoc.idDocente);
+    }
   }
 
   crearSeccion(): void {
@@ -300,6 +337,7 @@ export class PlaneacionModuleOrganismComponent implements OnInit {
   }
 
   toggleFranja(idFranja: number): void {
+    if (!this.sigh.isDocente()) return;
     const pid = this.sigh.selectedPeriodoId() || 1;
     this.sigh.toggleDisponibilidadFranja(this.docenteDispId(), pid, idFranja);
   }

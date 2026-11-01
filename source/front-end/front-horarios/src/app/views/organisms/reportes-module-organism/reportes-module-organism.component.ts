@@ -13,15 +13,21 @@ import { TimetableGridOrganismComponent } from '../timetable-grid-organism/timet
       <button class="md-tab" [class.active]="subTab() === 'horario'" (click)="subTab.set('horario')">
         <span class="material-icons">calendar_view_week</span> RF-19 Horario por Docente / Espacio / Sección
       </button>
-      <button class="md-tab" [class.active]="subTab() === 'carga'" (click)="subTab.set('carga')">
-        <span class="material-icons">bar_chart</span> RF-20 Carga Docente vs Contrato (RN-05, RN-22)
-      </button>
-      <button class="md-tab" [class.active]="subTab() === 'riesgo'" (click)="subTab.set('riesgo')">
-        <span class="material-icons">warning_amber</span> RF-21 Secciones en Riesgo de Cierre (RN-21)
-      </button>
-      <button class="md-tab" [class.active]="subTab() === 'alertas'" (click)="subTab.set('alertas')">
-        <span class="material-icons">rule_folder</span> RF-22 Sesiones Faltantes y Días Consecutivos (RN-20)
-      </button>
+      @if (!sigh.isDocente()) {
+        <button class="md-tab" [class.active]="subTab() === 'carga'" (click)="subTab.set('carga')">
+          <span class="material-icons">bar_chart</span> RF-20 Carga Docente vs Contrato (RN-05, RN-22)
+        </button>
+      }
+      @if (sigh.isAdmin() || sigh.isCoordinador()) {
+        <button class="md-tab" [class.active]="subTab() === 'riesgo'" (click)="subTab.set('riesgo')">
+          <span class="material-icons">warning_amber</span> RF-21 Secciones en Riesgo de Cierre (RN-21)
+        </button>
+      }
+      @if (!sigh.isDocente()) {
+        <button class="md-tab" [class.active]="subTab() === 'alertas'" (click)="subTab.set('alertas')">
+          <span class="material-icons">rule_folder</span> RF-22 Sesiones Faltantes y Días Consecutivos (RN-20)
+        </button>
+      }
     </div>
 
     <!-- RF-19: HORARIO POR DOCENTE, ESPACIO Y SECCIÓN -->
@@ -30,51 +36,61 @@ import { TimetableGridOrganismComponent } from '../timetable-grid-organism/timet
         <div class="md-card-header">
           <div>
             <h3 class="md-card-title"><span class="material-icons">filter_alt</span> RF-19 | Consulta de Horario (Vista v_horario)</h3>
-            <p class="md-card-subtitle">Filtra por versión, docente, espacio físico o sección académica.</p>
+            <p class="md-card-subtitle">
+              @if (sigh.isDocente()) {
+                Consultando automáticamente el horario asignado a su perfil docente.
+              } @else {
+                Filtra por versión, docente, espacio físico o sección académica.
+              }
+            </p>
           </div>
         </div>
-        <div class="md-form-grid" style="margin-bottom: 16px">
-          <div class="md-field">
-            <label>Versión de Horario</label>
-            <select class="md-select" [ngModel]="sigh.selectedVersionId()" (ngModelChange)="cambiarVersionReporte($event)">
-              @for (v of sigh.versiones(); track v.idVersion) {
-                <option [ngValue]="v.idVersion">v{{ v.numeroVersion }} ({{ v.estado }})</option>
-              }
-            </select>
+        @if (!sigh.isDocente()) {
+          <div class="md-form-grid" style="margin-bottom: 16px">
+            <div class="md-field">
+              <label>Versión de Horario</label>
+              <select class="md-select" [ngModel]="sigh.selectedVersionId()" (ngModelChange)="cambiarVersionReporte($event)">
+                @for (v of sigh.versiones(); track v.idVersion) {
+                  <option [ngValue]="v.idVersion">v{{ v.numeroVersion }} ({{ v.estado }})</option>
+                }
+              </select>
+            </div>
+            @if (sigh.isAdmin() || sigh.isCoordinador()) {
+              <div class="md-field">
+                <label>Filtrar por Docente</label>
+                <select class="md-select" [(ngModel)]="filtroHorario.idDocente" (ngModelChange)="aplicarFiltroHorario()">
+                  <option [ngValue]="null">— Todos los docentes —</option>
+                  @for (d of sigh.docentes(); track d.idDocente) {
+                    <option [ngValue]="d.idDocente">{{ d.nombres }} {{ d.apellidos }}</option>
+                  }
+                </select>
+              </div>
+              <div class="md-field">
+                <label>Filtrar por Espacio</label>
+                <select class="md-select" [(ngModel)]="filtroHorario.idEspacio" (ngModelChange)="aplicarFiltroHorario()">
+                  <option [ngValue]="null">— Todos los espacios —</option>
+                  @for (e of sigh.espacios(); track e.idEspacio) {
+                    <option [ngValue]="e.idEspacio">{{ e.codigo }} - {{ e.nombre }}</option>
+                  }
+                </select>
+              </div>
+              <div class="md-field">
+                <label>Filtrar por Sección</label>
+                <select class="md-select" [(ngModel)]="filtroHorario.idSeccion" (ngModelChange)="aplicarFiltroHorario()">
+                  <option [ngValue]="null">— Todas las secciones —</option>
+                  @for (s of sigh.secciones(); track s.idSeccion) {
+                    <option [ngValue]="s.idSeccion">{{ s.codigoCurso }} - Sec. {{ s.numero }}</option>
+                  }
+                </select>
+              </div>
+              <div>
+                <button class="md-btn md-btn-outlined" (click)="limpiarFiltrosHorario()">
+                  <span class="material-icons">restart_alt</span> Limpiar Filtros
+                </button>
+              </div>
+            }
           </div>
-          <div class="md-field">
-            <label>Filtrar por Docente</label>
-            <select class="md-select" [(ngModel)]="filtroHorario.idDocente" (ngModelChange)="aplicarFiltroHorario()">
-              <option [ngValue]="null">— Todos los docentes —</option>
-              @for (d of sigh.docentes(); track d.idDocente) {
-                <option [ngValue]="d.idDocente">{{ d.nombres }} {{ d.apellidos }}</option>
-              }
-            </select>
-          </div>
-          <div class="md-field">
-            <label>Filtrar por Espacio</label>
-            <select class="md-select" [(ngModel)]="filtroHorario.idEspacio" (ngModelChange)="aplicarFiltroHorario()">
-              <option [ngValue]="null">— Todos los espacios —</option>
-              @for (e of sigh.espacios(); track e.idEspacio) {
-                <option [ngValue]="e.idEspacio">{{ e.codigo }} - {{ e.nombre }}</option>
-              }
-            </select>
-          </div>
-          <div class="md-field">
-            <label>Filtrar por Sección</label>
-            <select class="md-select" [(ngModel)]="filtroHorario.idSeccion" (ngModelChange)="aplicarFiltroHorario()">
-              <option [ngValue]="null">— Todas las secciones —</option>
-              @for (s of sigh.secciones(); track s.idSeccion) {
-                <option [ngValue]="s.idSeccion">{{ s.codigoCurso }} - Sec. {{ s.numero }}</option>
-              }
-            </select>
-          </div>
-          <div>
-            <button class="md-btn md-btn-outlined" (click)="limpiarFiltrosHorario()">
-              <span class="material-icons">restart_alt</span> Limpiar Filtros
-            </button>
-          </div>
-        </div>
+        }
 
         <app-timetable-grid-organism
           [franjas]="sigh.franjas()"
@@ -213,7 +229,9 @@ import { TimetableGridOrganismComponent } from '../timetable-grid-organism/timet
                 <th>Sección</th>
                 <th>Matrícula Real</th>
                 <th>Cupo Mínimo (P-03)</th>
-                <th>Acción Coordinador (RF-10)</th>
+                @if (sigh.isCoordinador()) {
+                  <th>Acción Coordinador (RF-10)</th>
+                }
               </tr>
             </thead>
             <tbody>
@@ -225,15 +243,17 @@ import { TimetableGridOrganismComponent } from '../timetable-grid-organism/timet
                   <td>Sec. {{ r.numeroSeccion }}</td>
                   <td><span class="md-chip md-chip-error">{{ r.matriculaReal }} inscritos</span></td>
                   <td>{{ r.cupoMin }} mín.</td>
-                  <td>
-                    <button class="md-btn md-btn-danger md-btn-sm" (click)="sigh.cerrarSeccion(r.idSeccion)">
-                      <span class="material-icons">lock</span> Cerrar Sección
-                    </button>
-                  </td>
+                  @if (sigh.isCoordinador()) {
+                    <td>
+                      <button class="md-btn md-btn-danger md-btn-sm" (click)="sigh.cerrarSeccion(r.idSeccion)">
+                        <span class="material-icons">lock</span> Cerrar Sección
+                      </button>
+                    </td>
+                  }
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="7">No hay secciones en riesgo de cierre actualmente.</td>
+                  <td [attr.colspan]="sigh.isCoordinador() ? 7 : 6">No hay secciones en riesgo de cierre actualmente.</td>
                 </tr>
               }
             </tbody>

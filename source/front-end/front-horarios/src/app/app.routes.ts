@@ -9,15 +9,20 @@ import { SighApiService } from './services/sigh-api.service';
 export const authGuard: CanActivateFn = () => {
   const api = inject(SighApiService);
   const router = inject(Router);
-  if (!api.authToken()) {
+  if (!api.authToken() && !api.authenticatedUser()) {
     return router.createUrlTree(['/login']);
   }
   return api.obtenerSesionActual().pipe(
     map(() => true),
-    catchError(() => {
-      api.logout();
-      return of(router.createUrlTree(['/login']));
-    })
+    catchError(() =>
+      api.refreshToken().pipe(
+        map(() => true),
+        catchError(() => {
+          api.logout();
+          return of(router.createUrlTree(['/login']));
+        })
+      )
+    )
   );
 };
 

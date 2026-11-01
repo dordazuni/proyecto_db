@@ -17,10 +17,6 @@ import { MainLayoutTemplateComponent } from '../../templates/main-layout-templat
           <div class="login-icon-badge">
             <span class="material-icons">lock_person</span>
           </div>
-          <span class="md-chip md-chip-success">
-            <span class="material-icons" style="font-size: 15px">check_circle</span>
-            PostgreSQL Conectado (/api/echo OK)
-          </span>
           <h1 class="login-title">Acceso al Sistema SIGH</h1>
           <p class="login-subtitle">
             Autenticación de Usuarios y Control de Roles (RF-23, RF-25, RNF-04)
@@ -115,12 +111,6 @@ import { MainLayoutTemplateComponent } from '../../templates/main-layout-templat
           <small class="demo-hint">
             Contraseña predeterminada para usuarios semilla: <code>123456</code> (o el mismo nombre de usuario).
           </small>
-        </div>
-
-        <div class="login-footer">
-          <button type="button" class="md-btn md-btn-outlined md-btn-sm" (click)="volverAEcho()">
-            <span class="material-icons">arrow_back</span> Volver a verificación /api/echo
-          </button>
         </div>
       </div>
     </app-main-layout-template>
@@ -277,11 +267,6 @@ import { MainLayoutTemplateComponent } from '../../templates/main-layout-templat
       font-size: 0.74rem;
       color: var(--md-text-secondary);
     }
-    .login-footer {
-      margin-top: 16px;
-      display: flex;
-      justify-content: center;
-    }
   `]
 })
 export class LoginPageComponent {
@@ -336,9 +321,5 @@ export class LoginPageComponent {
           this.errorMessage.set(backendMsg);
         }
       });
-  }
-
-  volverAEcho(): void {
-    this.router.navigate(['/']);
   }
 }

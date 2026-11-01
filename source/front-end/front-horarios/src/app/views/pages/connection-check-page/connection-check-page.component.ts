@@ -16,7 +16,7 @@ import { ConnectionCardOrganismComponent } from '../../organisms/connection-card
             badgeLabel="CONECTANDO"
             variant="loading"
             title="Verificando conexión SIGH..."
-            [description]="'Consultando el servicio ' + controller.endpointUrl">
+            description="Comprobando disponibilidad del servicio SIGH...">
           </app-connection-card-organism>
         } @else if (controller.errorMessage()) {
           <app-connection-card-organism

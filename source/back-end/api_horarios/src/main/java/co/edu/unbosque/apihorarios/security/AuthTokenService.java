@@ -16,7 +16,7 @@ import java.util.regex.Pattern;
 @Service
 public class AuthTokenService {
 
-    private static final long EXPIRATION_SECONDS = 8L * 60L * 60L; // 8 horas
+    private static final long EXPIRATION_SECONDS = 24L * 60L * 60L; // 24 horas (auto-renovable)
     private static final String HMAC_ALG = "HmacSHA256";
 
     private final byte[] secretBytes;
@@ -35,7 +35,7 @@ public class AuthTokenService {
                 "{\"idUsuario\":%d,\"nombreUsuario\":\"%s\",\"idRol\":%d,\"nombreRol\":\"%s\",\"idDocente\":%s,\"iat\":%d,\"exp\":%d}",
                 usuario.getIdUsuario(),
                 escapeJson(usuario.getNombreUsuario()),
-                usuario.getIdRol(),
+                usuario.getIdRol() != null ? usuario.getIdRol() : 1,
                 escapeJson(usuario.getNombreRol()),
                 usuario.getIdDocente() != null ? usuario.getIdDocente().toString() : "null",
                 now,
@@ -51,6 +51,31 @@ public class AuthTokenService {
     }
 
     public Usuario verifyToken(String token) {
+        return parseAndVerifyToken(token, false);
+    }
+
+    /**
+     * Verifica la firma del token incluso si ya expiró su campo 'exp',
+     * permitiendo refrescar el token automáticamente sin cerrar la sesión del usuario.
+     */
+    public Usuario verifyTokenAllowExpired(String token) {
+        return parseAndVerifyToken(token, true);
+    }
+
+    public boolean isTokenExpired(String token) {
+        try {
+            String[] parts = token.trim().split("\\.");
+            if (parts.length != 3) return true;
+            String payloadJson = new String(Base64.getUrlDecoder().decode(parts[1]), StandardCharsets.UTF_8);
+            Long exp = extractLong(payloadJson, "exp");
+            long now = Instant.now().getEpochSecond();
+            return exp == null || now > exp;
+        } catch (Exception e) {
+            return true;
+        }
+    }
+
+    private Usuario parseAndVerifyToken(String token, boolean allowExpired) {
         if (token == null || token.isBlank()) {
             throw new UnauthorizedException("RF-23", "Token de autenticación ausente.");
         }
@@ -74,10 +99,12 @@ public class AuthTokenService {
             throw new UnauthorizedException("RF-23", "Token malformado.");
         }
 
-        Long exp = extractLong(payloadJson, "exp");
-        long now = Instant.now().getEpochSecond();
-        if (exp == null || now > exp) {
-            throw new UnauthorizedException("RF-23", "La sesión ha expirado. Inicie sesión nuevamente.");
+        if (!allowExpired) {
+            Long exp = extractLong(payloadJson, "exp");
+            long now = Instant.now().getEpochSecond();
+            if (exp == null || now > exp) {
+                throw new UnauthorizedException("RF-23", "La sesión ha expirado. Inicie sesión nuevamente.");
+            }
         }
 
         Integer idUsuario = extractInt(payloadJson, "idUsuario");

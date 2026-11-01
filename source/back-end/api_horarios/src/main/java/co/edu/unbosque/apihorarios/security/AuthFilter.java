@@ -21,9 +21,11 @@ import java.time.LocalDateTime;
 public class AuthFilter extends OncePerRequestFilter {
 
     private final AuthTokenService authTokenService;
+    private final UserSessionRegistry sessionRegistry;
 
-    public AuthFilter(AuthTokenService authTokenService) {
+    public AuthFilter(AuthTokenService authTokenService, UserSessionRegistry sessionRegistry) {
         this.authTokenService = authTokenService;
+        this.sessionRegistry = sessionRegistry;
     }
 
     @Override
@@ -40,12 +42,13 @@ public class AuthFilter extends OncePerRequestFilter {
             path = request.getRequestURI();
         }
 
-        // Públicos sin token: solo GET /api/echo y POST /api/auth/login (y /api/login)
+        // Públicos sin token: GET /api/echo, POST /api/auth/login y POST /api/auth/refresh
         boolean isEcho = "GET".equalsIgnoreCase(request.getMethod())
                 && (path.equals("/echo") || path.endsWith("/api/echo"));
         boolean isLogin = "POST".equalsIgnoreCase(request.getMethod())
                 && (path.equals("/auth/login") || path.endsWith("/api/auth/login")
-                    || path.equals("/login") || path.endsWith("/api/login"));
+                    || path.equals("/login") || path.endsWith("/api/login")
+                    || path.equals("/auth/refresh") || path.endsWith("/api/auth/refresh"));
 
         if (isEcho || isLogin) {
             try {
@@ -65,7 +68,16 @@ public class AuthFilter extends OncePerRequestFilter {
 
         String token = authHeader.substring(7).trim();
         try {
-            Usuario usuario = authTokenService.verifyToken(token);
+            // Verifica la firma HMAC; si el token había expirado, lo renueva automáticamente
+            boolean expired = authTokenService.isTokenExpired(token);
+            Usuario usuario = authTokenService.verifyTokenAllowExpired(token);
+            if (expired) {
+                String renewedToken = authTokenService.generateToken(usuario);
+                response.setHeader("X-Renewed-Token", renewedToken);
+                sessionRegistry.registerSession(usuario, renewedToken);
+            } else {
+                sessionRegistry.updateAccessTime(usuario.getIdUsuario(), token);
+            }
             AuthContextHolder.setCurrentUser(usuario);
             filterChain.doFilter(request, response);
         } catch (UnauthorizedException ex) {

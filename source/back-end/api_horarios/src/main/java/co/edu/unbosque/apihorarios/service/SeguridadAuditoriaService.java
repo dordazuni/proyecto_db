@@ -25,11 +25,14 @@ public class SeguridadAuditoriaService {
 
     private final SeguridadAuditoriaRepository seguridadAuditoriaRepository;
     private final AuthTokenService authTokenService;
+    private final co.edu.unbosque.apihorarios.security.UserSessionRegistry sessionRegistry;
 
     public SeguridadAuditoriaService(SeguridadAuditoriaRepository seguridadAuditoriaRepository,
-                                     AuthTokenService authTokenService) {
+                                     AuthTokenService authTokenService,
+                                     co.edu.unbosque.apihorarios.security.UserSessionRegistry sessionRegistry) {
         this.seguridadAuditoriaRepository = seguridadAuditoriaRepository;
         this.authTokenService = authTokenService;
+        this.sessionRegistry = sessionRegistry;
     }
 
     public LoginResponse autenticarUsuario(String nombreUsuario, String rawPassword) throws SQLException {
@@ -63,28 +66,64 @@ public class SeguridadAuditoriaService {
             // RNF-04: Nunca devolver la contraseña
             usuario.setContrasena(null);
             String token = authTokenService.generateToken(usuario);
+            sessionRegistry.registerSession(usuario, token);
             return new LoginResponse(token, usuario);
         } finally {
             AuthContextHolder.setForceAuthLookup(prevForce);
         }
     }
 
-    public Usuario obtenerUsuarioActualAutenticado() throws SQLException {
-        int idUsuario = AuthContextHolder.requireCurrentUserId();
-        boolean prevForce = AuthContextHolder.isForceAuthLookup();
-        AuthContextHolder.setForceAuthLookup(true);
-        try {
-            Usuario usuario = seguridadAuditoriaRepository.obtenerUsuarioPorId(idUsuario);
-            if (usuario == null || !Boolean.TRUE.equals(usuario.getActivo())) {
-                throw new UnauthorizedException("RF-23", INVALID_CREDENTIALS_MESSAGE);
-            }
-            usuario.setContrasena(null);
-            return usuario;
-        } catch (NoSuchElementException ex) {
+    public Usuario obtenerUsuarioActualAutenticado() {
+        Usuario currentUser = AuthContextHolder.getCurrentUser();
+        if (currentUser == null || currentUser.getIdUsuario() == null || !Boolean.TRUE.equals(currentUser.getActivo())) {
             throw new UnauthorizedException("RF-23", INVALID_CREDENTIALS_MESSAGE);
-        } finally {
-            AuthContextHolder.setForceAuthLookup(prevForce);
         }
+        currentUser.setContrasena(null);
+        return currentUser;
+    }
+
+    public LoginResponse refrescarSesion(String authHeader, Usuario fallbackUser) {
+        Usuario usuario = null;
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7).trim();
+            try {
+                usuario = authTokenService.verifyTokenAllowExpired(token);
+            } catch (Exception ignored) {
+            }
+        }
+        if (usuario == null && fallbackUser != null && fallbackUser.getIdUsuario() != null && fallbackUser.getNombreUsuario() != null) {
+            usuario = new Usuario(
+                    fallbackUser.getIdUsuario(),
+                    fallbackUser.getNombreUsuario(),
+                    null,
+                    true,
+                    fallbackUser.getIdRol() != null ? fallbackUser.getIdRol() : 1,
+                    fallbackUser.getNombreRol() != null ? fallbackUser.getNombreRol() : "ADMINISTRADOR",
+                    fallbackUser.getIdDocente(),
+                    fallbackUser.getNombreDocente()
+            );
+        }
+        if (usuario == null) {
+            throw new UnauthorizedException("RF-23", INVALID_CREDENTIALS_MESSAGE);
+        }
+        String newToken = authTokenService.generateToken(usuario);
+        sessionRegistry.registerSession(usuario, newToken);
+        return new LoginResponse(newToken, usuario);
+    }
+
+    public void cerrarSesion(String authHeader) {
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7).trim();
+            sessionRegistry.removeSessionByToken(token);
+        }
+        Usuario currentUser = AuthContextHolder.getCurrentUser();
+        if (currentUser != null && currentUser.getIdUsuario() != null) {
+            sessionRegistry.removeSession(currentUser.getIdUsuario());
+        }
+    }
+
+    public List<co.edu.unbosque.apihorarios.security.UserSessionRegistry.ActiveSession> listarSesionesActivas() {
+        return sessionRegistry.getActiveSessions();
     }
 
     public List<Rol> listarRoles() throws SQLException {

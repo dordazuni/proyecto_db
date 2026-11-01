@@ -92,11 +92,15 @@ import { Usuario } from '../../../models/sigh.models';
                     </span>
                   </td>
                   <td>
-                    <button
-                      class="md-btn md-btn-outlined md-btn-sm"
-                      (click)="toggleEstadoUsuario(u)">
-                      {{ u.activo ? 'Desactivar' : 'Activar' }}
-                    </button>
+                    @if (u.nombreUsuario === 'sistema') {
+                      <span class="md-chip md-chip-neutral">Sistema técnico (bloqueado)</span>
+                    } @else {
+                      <button
+                        class="md-btn md-btn-outlined md-btn-sm"
+                        (click)="toggleEstadoUsuario(u)">
+                        {{ u.activo ? 'Desactivar' : 'Activar' }}
+                      </button>
+                    }
                   </td>
                 </tr>
               }
@@ -116,7 +120,7 @@ import { Usuario } from '../../../models/sigh.models';
               RF-24 | Bitácora de Auditoría Inmutable (log_auditoria — Regla RN-18 / RNF-06)
             </h3>
             <p class="md-card-subtitle">
-              Registrada automáticamente por disparadores en PostgreSQL ante cada INSERT, UPDATE o DELETE en asignaciones y cambios de estado de versiones.
+              Registrada automáticamente por disparadores en la base de datos ante cada INSERT, UPDATE o DELETE en asignaciones y cambios de estado de versiones.
             </p>
           </div>
         </div>

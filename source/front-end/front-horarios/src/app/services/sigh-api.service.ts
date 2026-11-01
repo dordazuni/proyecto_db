@@ -76,6 +76,31 @@ export class SighApiService {
     }
   }
 
+  updateTokenOnly(token: string): void {
+    if (!token) return;
+    this.authToken.set(token);
+    try {
+      localStorage.setItem(SESSION_TOKEN_KEY, token);
+    } catch {
+      // ignore storage errors
+    }
+  }
+
+  refreshToken(): Observable<LoginResponse> {
+    const currentUser = this.authenticatedUser();
+    return this.http
+      .post<LoginResponse>(`${this.baseUrl}/auth/refresh`, currentUser ?? {}, {
+        headers: this.getHeaders()
+      })
+      .pipe(
+        tap((res: LoginResponse) => {
+          if (res?.token && res?.usuario) {
+            this.setSession(res.token, res.usuario);
+          }
+        })
+      );
+  }
+
   setSessionUser(usuario: Usuario): void {
     this.authenticatedUser.set(usuario);
     try {
@@ -86,6 +111,11 @@ export class SighApiService {
   }
 
   logout(): void {
+    const headers = this.getHeaders();
+    this.http.post(`${this.baseUrl}/auth/logout`, {}, { headers }).subscribe({
+      next: () => {},
+      error: () => {}
+    });
     this.authToken.set(null);
     this.authenticatedUser.set(null);
     try {

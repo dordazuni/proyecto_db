@@ -42,8 +42,27 @@ public class SeguridadAuditoriaController {
     }
 
     @GetMapping("/auth/me")
-    public ResponseEntity<Usuario> obtenerSesionActual() throws SQLException {
+    public ResponseEntity<Usuario> obtenerSesionActual() {
         return ResponseEntity.ok(seguridadAuditoriaService.obtenerUsuarioActualAutenticado());
+    }
+
+    @PostMapping("/auth/refresh")
+    public ResponseEntity<LoginResponse> refrescarToken(
+            @org.springframework.web.bind.annotation.RequestHeader(value = "Authorization", required = false) String authHeader,
+            @RequestBody(required = false) Usuario fallbackUser) {
+        return ResponseEntity.ok(seguridadAuditoriaService.refrescarSesion(authHeader, fallbackUser));
+    }
+
+    @PostMapping({"/auth/logout", "/logout"})
+    public ResponseEntity<Void> logout(
+            @org.springframework.web.bind.annotation.RequestHeader(value = "Authorization", required = false) String authHeader) {
+        seguridadAuditoriaService.cerrarSesion(authHeader);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/auth/sessions")
+    public ResponseEntity<List<co.edu.unbosque.apihorarios.security.UserSessionRegistry.ActiveSession>> listarSesionesActivas() {
+        return ResponseEntity.ok(seguridadAuditoriaService.listarSesionesActivas());
     }
 
     // =====================================================================

@@ -23,9 +23,11 @@ import { Franja, HorarioDetalle } from '../../../models/sigh.models';
           </p>
         </div>
         <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap">
-          <button class="md-btn md-btn-filled" (click)="crearNuevaVersion()">
-            <span class="material-icons">add</span> RF-12 Nueva Versión (EN_EDICION)
-          </button>
+          @if (sigh.isCoordinador()) {
+            <button class="md-btn md-btn-filled" (click)="crearNuevaVersion()">
+              <span class="material-icons">add</span> RF-12 Nueva Versión (EN_EDICION)
+            </button>
+          }
         </div>
       </div>
 
@@ -69,15 +71,15 @@ import { Franja, HorarioDetalle } from '../../../models/sigh.models';
           </div>
 
           <div class="workflow-actions">
-            <!-- RF-15: EN_EDICION -> PENDIENTE -->
-            @if (ver.estado === 'EN_EDICION') {
+            <!-- RF-15: EN_EDICION -> PENDIENTE (Solo Coordinador) -->
+            @if (sigh.isCoordinador() && ver.estado === 'EN_EDICION') {
               <button class="md-btn md-btn-warning" (click)="sigh.enviarAAprobacion(ver.idVersion!)">
                 <span class="material-icons">send</span> RF-15 Enviar a Aprobación
               </button>
             }
 
-            <!-- RF-16: PENDIENTE -> AVALADO o EN_EDICION -->
-            @if (ver.estado === 'PENDIENTE') {
+            <!-- RF-16: PENDIENTE -> AVALADO o EN_EDICION (Solo Aprobador) -->
+            @if (sigh.isAprobador() && ver.estado === 'PENDIENTE') {
               <button class="md-btn md-btn-success" (click)="sigh.avalarVersion(ver.idVersion!)">
                 <span class="material-icons">fact_check</span> RF-16 Avalar Versión (Aprobador)
               </button>
@@ -86,8 +88,8 @@ import { Franja, HorarioDetalle } from '../../../models/sigh.models';
               </button>
             }
 
-            <!-- RF-17: AVALADO -> SINCRONIZADO -->
-            @if (ver.estado === 'AVALADO') {
+            <!-- RF-17: AVALADO -> SINCRONIZADO (Solo Administrador) -->
+            @if (sigh.isAdmin() && ver.estado === 'AVALADO') {
               <div style="display: flex; gap: 6px; align-items: center">
                 <input
                   class="md-input"
@@ -104,79 +106,81 @@ import { Franja, HorarioDetalle } from '../../../models/sigh.models';
       </div>
     </div>
 
-    <!-- RF-13 y RF-14: ASIGNAR O MODIFICAR SESIÓN (VALIDACIÓN EN MOTOR POSTGRESQL) -->
+    <!-- RF-13 y RF-14: ASIGNAR O MODIFICAR SESIÓN (VALIDACIÓN EN BASE DE DATOS) -->
     @if (sigh.selectedVersion(); as ver) {
-      <div class="md-card">
-        <div class="md-card-header">
-          <div>
-            <h3 class="md-card-title">
-              <span class="material-icons">event_note</span>
-              RF-13 & RF-14 | Asignar Sesión en Versión v{{ ver.numeroVersion }} ({{ ver.estado }})
-            </h3>
-            <p class="md-card-subtitle">
-              Cada asignación se guarda al instante y pasa por las 19 reglas duras en PostgreSQL (RN-01 a RN-16: cruces, aforo, horas contrato, habilitación, recursos, disponibilidad).
-            </p>
+      @if (sigh.isCoordinador()) {
+        <div class="md-card">
+          <div class="md-card-header">
+            <div>
+              <h3 class="md-card-title">
+                <span class="material-icons">event_note</span>
+                RF-13 & RF-14 | Asignar Sesión en Versión v{{ ver.numeroVersion }} ({{ ver.estado }})
+              </h3>
+              <p class="md-card-subtitle">
+                Cada asignación se guarda al instante y pasa por las 19 reglas duras en la base de datos (RN-01 a RN-16: cruces, aforo, horas contrato, habilitación, recursos, disponibilidad).
+              </p>
+            </div>
+            @if (!esEditable()) {
+              <span class="md-chip md-chip-error">
+                <span class="material-icons" style="font-size: 15px">lock</span>
+                RN-16: Versión {{ ver.estado }} es inmutable
+              </span>
+            }
           </div>
-          @if (!esEditable()) {
-            <span class="md-chip md-chip-error">
-              <span class="material-icons" style="font-size: 15px">lock</span>
-              RN-16: Versión {{ ver.estado }} es inmutable
-            </span>
-          }
+
+          <div class="md-form-grid">
+            <div class="md-field">
+              <label>Sección Abierta (Curso / Cupo)</label>
+              <select class="md-select" [(ngModel)]="formAsignacion.idSeccion">
+                @for (s of sigh.secciones(); track s.idSeccion) {
+                  <option [ngValue]="s.idSeccion">
+                    #{{ s.idSeccion }} | {{ s.codigoCurso }} Sec. {{ s.numero }} ({{ s.nombreCurso }}) — [{{ s.estado }}, Mat: {{ s.matriculaReal ?? s.matriculaProyectada }}]
+                  </option>
+                }
+              </select>
+            </div>
+
+            <div class="md-field">
+              <label>Docente (Valida RN-01, RN-05, RN-12, RN-13)</label>
+              <select class="md-select" [(ngModel)]="formAsignacion.idDocente">
+                @for (d of sigh.docentes(); track d.idDocente) {
+                  <option [ngValue]="d.idDocente">
+                    #{{ d.idDocente }} | {{ d.nombres }} {{ d.apellidos }} ({{ d.nombreTipoContrato }}: máx {{ d.horasMax }}h)
+                  </option>
+                }
+              </select>
+            </div>
+
+            <div class="md-field">
+              <label>Espacio Físico (Valida RN-02, RN-04, RN-14)</label>
+              <select class="md-select" [(ngModel)]="formAsignacion.idEspacio">
+                @for (e of sigh.espacios(); track e.idEspacio) {
+                  <option [ngValue]="e.idEspacio">
+                    #{{ e.idEspacio }} | {{ e.codigo }} - {{ e.nombre }} (Cap: {{ e.capacidad }}, {{ e.tipoEspacio }})
+                  </option>
+                }
+              </select>
+            </div>
+
+            <div class="md-field">
+              <label>Franja Horaria 2h (Valida RN-03, RN-06, RN-07)</label>
+              <select class="md-select" [(ngModel)]="formAsignacion.idFranja">
+                @for (f of sigh.franjas(); track f.idFranja) {
+                  <option [ngValue]="f.idFranja">
+                    #F{{ f.idFranja }} | {{ f.nombreDia }} {{ f.horaInicio }} - {{ f.horaFin }}
+                  </option>
+                }
+              </select>
+            </div>
+
+            <div>
+              <button class="md-btn md-btn-filled" [disabled]="!esEditable()" (click)="asignarSesion()">
+                <span class="material-icons">add_task</span> RF-13 Asignar Sesión
+              </button>
+            </div>
+          </div>
         </div>
-
-        <div class="md-form-grid">
-          <div class="md-field">
-            <label>Sección Abierta (Curso / Cupo)</label>
-            <select class="md-select" [(ngModel)]="formAsignacion.idSeccion">
-              @for (s of sigh.secciones(); track s.idSeccion) {
-                <option [ngValue]="s.idSeccion">
-                  #{{ s.idSeccion }} | {{ s.codigoCurso }} Sec. {{ s.numero }} ({{ s.nombreCurso }}) — [{{ s.estado }}, Mat: {{ s.matriculaReal ?? s.matriculaProyectada }}]
-                </option>
-              }
-            </select>
-          </div>
-
-          <div class="md-field">
-            <label>Docente (Valida RN-01, RN-05, RN-12, RN-13)</label>
-            <select class="md-select" [(ngModel)]="formAsignacion.idDocente">
-              @for (d of sigh.docentes(); track d.idDocente) {
-                <option [ngValue]="d.idDocente">
-                  #{{ d.idDocente }} | {{ d.nombres }} {{ d.apellidos }} ({{ d.nombreTipoContrato }}: máx {{ d.horasMax }}h)
-                </option>
-              }
-            </select>
-          </div>
-
-          <div class="md-field">
-            <label>Espacio Físico (Valida RN-02, RN-04, RN-14)</label>
-            <select class="md-select" [(ngModel)]="formAsignacion.idEspacio">
-              @for (e of sigh.espacios(); track e.idEspacio) {
-                <option [ngValue]="e.idEspacio">
-                  #{{ e.idEspacio }} | {{ e.codigo }} - {{ e.nombre }} (Cap: {{ e.capacidad }}, {{ e.tipoEspacio }})
-                </option>
-              }
-            </select>
-          </div>
-
-          <div class="md-field">
-            <label>Franja Horaria 2h (Valida RN-03, RN-06, RN-07)</label>
-            <select class="md-select" [(ngModel)]="formAsignacion.idFranja">
-              @for (f of sigh.franjas(); track f.idFranja) {
-                <option [ngValue]="f.idFranja">
-                  #F{{ f.idFranja }} | {{ f.nombreDia }} {{ f.horaInicio }} - {{ f.horaFin }}
-                </option>
-              }
-            </select>
-          </div>
-
-          <div>
-            <button class="md-btn md-btn-filled" [disabled]="!esEditable()" (click)="asignarSesion()">
-              <span class="material-icons">add_task</span> RF-13 Asignar Sesión
-            </button>
-          </div>
-        </div>
-      </div>
+      }
 
       <!-- GRILLA SEMANAL INTERACTIVA DRAG & DROP -->
       <div class="md-card">
@@ -244,7 +248,7 @@ export class ProgramacionModuleOrganismComponent implements OnInit {
 
   readonly esEditable = computed(() => {
     const estado = this.sigh.selectedVersion()?.estado;
-    return estado === 'EN_EDICION';
+    return this.sigh.isCoordinador() && estado === 'EN_EDICION';
   });
 
   ngOnInit(): void {
