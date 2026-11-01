@@ -105,7 +105,7 @@ import { SeguridadModuleOrganismComponent } from '../../organisms/seguridad-modu
               [class.active]="sigh.activeModule() === 'programacion'"
               (click)="sigh.setModule('programacion')">
               <span class="material-icons">view_timeline</span>
-              <span>03. Programación (RF-12..18)</span>
+              <span>03. Programación (RF-12..17)</span>
             </button>
 
             <button
@@ -265,7 +265,7 @@ import { SeguridadModuleOrganismComponent } from '../../organisms/seguridad-modu
                     </tr>
                     <tr>
                       <td><strong>03. Programación</strong></td>
-                      <td>RF-12 a RF-18</td>
+                      <td>RF-12 a RF-17</td>
                       <td>CU-04, CU-07, CU-08, CU-10</td>
                       <td>RN-01 a RN-17 (Cruces, Aforo, Contrato, Flujo Aval)</td>
                       <td><button class="md-btn md-btn-tonal md-btn-sm" (click)="sigh.setModule('programacion')">Abrir</button></td>

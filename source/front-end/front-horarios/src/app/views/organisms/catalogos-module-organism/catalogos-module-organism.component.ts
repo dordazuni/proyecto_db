@@ -481,7 +481,7 @@ import { Curso, PeriodoAcademico, Recurso } from '../../../models/sigh.models';
     @if (subTab() === 'recursos') {
       <div class="md-card">
         <div class="md-card-header">
-          <h3 class="md-card-title"><span class="material-icons">add_Moderator</span> RF-04 | Nuevo Recurso Técnico</h3>
+          <h3 class="md-card-title"><span class="material-icons">add_moderator</span> RF-04 | Nuevo Recurso Técnico</h3>
         </div>
         <div class="md-form-grid">
           <div class="md-field">

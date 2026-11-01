@@ -75,7 +75,7 @@ export class SighController {
   readonly secciones = signal<Seccion[]>([]);
   readonly disponibilidades = signal<Disponibilidad[]>([]);
 
-  // 03. Programación (RF-12 a RF-18)
+  // 03. Programación (RF-12 a RF-17)
   readonly versiones = signal<VersionHorario[]>([]);
   readonly selectedVersionId = signal<number | null>(null);
   readonly asignaciones = signal<Asignacion[]>([]);
@@ -434,7 +434,7 @@ export class SighController {
   }
 
   // =========================================================================
-  // 03. PROGRAMACIÓN DE HORARIOS (RF-12 a RF-18)
+  // 03. PROGRAMACIÓN DE HORARIOS (RF-12 a RF-17)
   // =========================================================================
 
   cargarVersiones(idPeriodo?: number | null): void {
