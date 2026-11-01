@@ -470,3 +470,144 @@ CROSS JOIN
       WHERE r.nombre = 'PROYECTOR'
         AND e.capacidad >= 30) e
 ORDER BY 1, 3;
+
+-- ---------------------------------------------------------------------
+-- Bloque 5: Agregación y consultas combinadas
+-- ---------------------------------------------------------------------
+
+-- Ejercicio 41. Docentes por tipo de contrato
+-- Contar cuántos docentes hay de cada tipo de contrato.
+-- Álgebra: TIPO_CONTRATO.nombre 𝒢 count(DOCENTE.id_docente) (DOCENTE ⋈ DOCENTE.id_tipo_contrato = TIPO_CONTRATO.id_tipo_contrato TIPO_CONTRATO)
+-- Resultado esperado: 4 filas
+SELECT tc.nombre AS contrato, count(d.id_docente) AS docentes
+FROM docente d
+JOIN tipo_contrato tc ON d.id_tipo_contrato = tc.id_tipo_contrato
+GROUP BY tc.nombre;
+
+-- Ejercicio 42. Carga horaria de cada docente en 2027-1
+-- Calcular cuántas sesiones y cuántas horas de clase tiene cada docente en 2027-1.
+-- Álgebra: DOCENTE.nombres, DOCENTE.apellidos 𝒢 count(ASIGNACION.id_asignacion) (σ PERIODO_ACADEMICO.codigo = '2027-1' (((DOCENTE ⋈ DOCENTE.id_docente = ASIGNACION.id_docente ASIGNACION) ⋈ ASIGNACION.id_version = VERSION_HORARIO.id_version VERSION_HORARIO) ⋈ VERSION_HORARIO.id_periodo = PERIODO_ACADEMICO.id_periodo PERIODO_ACADEMICO))
+-- Resultado esperado: 7 filas
+SELECT d.nombres, d.apellidos,
+       count(a.id_asignacion)     AS sesiones,
+       count(a.id_asignacion) * 2 AS horas
+FROM docente d
+JOIN asignacion a        ON d.id_docente = a.id_docente
+JOIN version_horario v   ON a.id_version = v.id_version
+JOIN periodo_academico p ON v.id_periodo = p.id_periodo
+WHERE p.codigo = '2027-1'
+GROUP BY d.nombres, d.apellidos
+ORDER BY horas DESC, d.nombres;
+
+-- Ejercicio 43. Sesiones por día de la semana
+-- Contar cuántas sesiones hay cada día de la semana en el horario de 2027-1.
+-- Álgebra: FRANJA.dia_semana 𝒢 count(*) (σ PERIODO_ACADEMICO.codigo = '2027-1' (((ASIGNACION ⋈ ASIGNACION.id_franja = FRANJA.id_franja FRANJA) ⋈ ASIGNACION.id_version = VERSION_HORARIO.id_version VERSION_HORARIO) ⋈ VERSION_HORARIO.id_periodo = PERIODO_ACADEMICO.id_periodo PERIODO_ACADEMICO))
+-- Resultado esperado: 5 filas
+SELECT f.dia_semana, count(*) AS sesiones
+FROM asignacion a
+JOIN franja f            ON a.id_franja  = f.id_franja
+JOIN version_horario v   ON a.id_version = v.id_version
+JOIN periodo_academico p ON v.id_periodo = p.id_periodo
+WHERE p.codigo = '2027-1'
+GROUP BY f.dia_semana
+ORDER BY f.dia_semana;
+
+-- Ejercicio 44. Capacidad por edificio
+-- Por cada edificio, mostrar cuántos espacios tiene, su capacidad total y su capacidad promedio.
+-- Álgebra: edificio 𝒢 count(*), sum(capacidad), avg(capacidad) (ESPACIO)
+-- Resultado esperado: 3 filas
+SELECT edificio,
+       count(*)                 AS espacios,
+       sum(capacidad)           AS capacidad_total,
+       round(avg(capacidad), 1) AS capacidad_promedio
+FROM espacio
+GROUP BY edificio
+ORDER BY edificio;
+
+-- Ejercicio 45. Cursos con más de una sección
+-- Listar los cursos que tienen más de una sección en 2027-1.
+-- Álgebra: σ secciones > 1 (ρ R(codigo, secciones) (CURSO.codigo 𝒢 count(*) (σ PERIODO_ACADEMICO.codigo = '2027-1' ((SECCION ⋈ SECCION.id_curso = CURSO.id_curso CURSO) ⋈ SECCION.id_periodo = PERIODO_ACADEMICO.id_periodo PERIODO_ACADEMICO))))
+-- Resultado esperado: 4 filas
+SELECT c.codigo, count(*) AS secciones
+FROM seccion s
+JOIN curso c             ON s.id_curso   = c.id_curso
+JOIN periodo_academico p ON s.id_periodo = p.id_periodo
+WHERE p.codigo = '2027-1'
+GROUP BY c.codigo
+HAVING count(*) > 1
+ORDER BY c.codigo;
+
+-- Ejercicio 46. Resumen de matrícula proyectada
+-- Para las secciones de 2027-1, calcular cuántas son y la matrícula proyectada máxima, mínima y promedio.
+-- Álgebra: 𝒢 count(*), max(matricula_proyectada), min(matricula_proyectada), avg(matricula_proyectada) (σ PERIODO_ACADEMICO.codigo = '2027-1' (SECCION ⋈ SECCION.id_periodo = PERIODO_ACADEMICO.id_periodo PERIODO_ACADEMICO))
+-- Resultado esperado: 1 fila
+SELECT count(*)                              AS secciones,
+       max(s.matricula_proyectada)            AS maxima,
+       min(s.matricula_proyectada)            AS minima,
+       round(avg(s.matricula_proyectada), 1)  AS promedio
+FROM seccion s
+JOIN periodo_academico p ON s.id_periodo = p.id_periodo
+WHERE p.codigo = '2027-1';
+
+-- Ejercicio 47. Docentes por debajo de su mínimo (RN-22)
+-- Listar los docentes cuya carga en 2027-1 está por debajo de las horas mínimas de su contrato.
+-- Álgebra: σ horas < horas_min (ρ R(nombres, apellidos, horas_min, horas) (DOCENTE.nombres, DOCENTE.apellidos, TIPO_CONTRATO.horas_min 𝒢 2·count(ASIGNACION.id_asignacion) (σ PERIODO_ACADEMICO.codigo = '2027-1' ((((DOCENTE ⋈ DOCENTE.id_tipo_contrato = TIPO_CONTRATO.id_tipo_contrato TIPO_CONTRATO) ⋈ DOCENTE.id_docente = ASIGNACION.id_docente ASIGNACION) ⋈ ASIGNACION.id_version = VERSION_HORARIO.id_version VERSION_HORARIO) ⋈ VERSION_HORARIO.id_periodo = PERIODO_ACADEMICO.id_periodo PERIODO_ACADEMICO))))
+-- Resultado esperado: 4 filas
+SELECT d.nombres, d.apellidos,
+       count(a.id_asignacion) * 2 AS horas,
+       tc.horas_min
+FROM docente d
+JOIN tipo_contrato tc    ON d.id_tipo_contrato = tc.id_tipo_contrato
+JOIN asignacion a        ON d.id_docente = a.id_docente
+JOIN version_horario v   ON a.id_version = v.id_version
+JOIN periodo_academico p ON v.id_periodo = p.id_periodo
+WHERE p.codigo = '2027-1'
+GROUP BY d.nombres, d.apellidos, tc.horas_min
+HAVING count(a.id_asignacion) * 2 < tc.horas_min
+ORDER BY horas;
+
+-- Ejercicio 48. Ocupación de cada espacio
+-- Contar cuántas sesiones tiene cada espacio en 2027-1, incluidos los que no tienen ninguna.
+-- Álgebra: ESPACIO.codigo 𝒢 count(A.id_asignacion) (ESPACIO ⟕ ESPACIO.id_espacio = A.id_espacio ρ A (π ASIGNACION.* (σ PERIODO_ACADEMICO.codigo = '2027-1' ((ASIGNACION ⋈ ASIGNACION.id_version = VERSION_HORARIO.id_version VERSION_HORARIO) ⋈ VERSION_HORARIO.id_periodo = PERIODO_ACADEMICO.id_periodo PERIODO_ACADEMICO))))
+-- Resultado esperado: 7 filas
+SELECT e.codigo, count(a.id_asignacion) AS sesiones
+FROM espacio e
+LEFT JOIN (SELECT a.*
+           FROM asignacion a
+           JOIN version_horario v   ON a.id_version = v.id_version
+           JOIN periodo_academico p ON v.id_periodo = p.id_periodo
+           WHERE p.codigo = '2027-1') a
+       ON e.id_espacio = a.id_espacio
+GROUP BY e.codigo
+ORDER BY sesiones DESC, e.codigo;
+
+-- Ejercicio 49. Secciones con sesiones faltantes (RN-09)
+-- Listar las secciones abiertas de 2027-1 con menos sesiones programadas que la frecuencia semanal de su curso.
+-- Álgebra: σ asignadas < frecuencia_semanal (ρ R(codigo, numero, frecuencia_semanal, asignadas) (CURSO.codigo, SECCION.numero, CURSO.frecuencia_semanal 𝒢 count(ASIGNACION.id_asignacion) (σ PERIODO_ACADEMICO.codigo = '2027-1' ∧ SECCION.estado = 'ABIERTA' (((SECCION ⋈ SECCION.id_curso = CURSO.id_curso CURSO) ⋈ SECCION.id_periodo = PERIODO_ACADEMICO.id_periodo PERIODO_ACADEMICO) ⟕ SECCION.id_seccion = ASIGNACION.id_seccion ASIGNACION))))
+-- Resultado esperado: 2 filas
+SELECT c.codigo, s.numero, c.frecuencia_semanal,
+       count(a.id_asignacion) AS asignadas
+FROM seccion s
+JOIN curso c             ON s.id_curso   = c.id_curso
+JOIN periodo_academico p ON s.id_periodo = p.id_periodo
+LEFT JOIN asignacion a   ON s.id_seccion = a.id_seccion
+WHERE p.codigo = '2027-1'
+  AND s.estado = 'ABIERTA'
+GROUP BY c.codigo, s.numero, c.frecuencia_semanal
+HAVING count(a.id_asignacion) < c.frecuencia_semanal
+ORDER BY c.codigo, s.numero;
+
+-- Ejercicio 50. Resumen de cada versión del horario
+-- Para cada versión del horario, mostrar su período, su estado, cuántas sesiones tiene y cuántos docentes, espacios y secciones distintos usa.
+-- Álgebra: PERIODO_ACADEMICO.codigo, VERSION_HORARIO.estado 𝒢 count(*), count_distinct(id_docente), count_distinct(id_espacio), count_distinct(id_seccion) ((ASIGNACION ⋈ ASIGNACION.id_version = VERSION_HORARIO.id_version VERSION_HORARIO) ⋈ VERSION_HORARIO.id_periodo = PERIODO_ACADEMICO.id_periodo PERIODO_ACADEMICO)
+-- Resultado esperado: 2 filas
+SELECT p.codigo AS periodo, v.estado,
+       count(*)                     AS sesiones,
+       count(DISTINCT a.id_docente) AS docentes,
+       count(DISTINCT a.id_espacio) AS espacios,
+       count(DISTINCT a.id_seccion) AS secciones
+FROM asignacion a
+JOIN version_horario v   ON a.id_version = v.id_version
+JOIN periodo_academico p ON v.id_periodo = p.id_periodo
+GROUP BY p.codigo, v.estado
+ORDER BY p.codigo;
