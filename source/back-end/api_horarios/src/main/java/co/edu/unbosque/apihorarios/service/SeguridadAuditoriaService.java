@@ -8,6 +8,8 @@ import co.edu.unbosque.apihorarios.repository.SeguridadAuditoriaRepository;
 import co.edu.unbosque.apihorarios.security.AuthContextHolder;
 import co.edu.unbosque.apihorarios.security.AuthTokenService;
 import co.edu.unbosque.apihorarios.security.UnauthorizedException;
+import co.edu.unbosque.apihorarios.security.UserSessionRegistry;
+import co.edu.unbosque.apihorarios.security.UserSessionRegistry.ActiveSessionDto;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
@@ -16,7 +18,6 @@ import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
 import java.util.HexFormat;
 import java.util.List;
-import java.util.NoSuchElementException;
 
 @Service
 public class SeguridadAuditoriaService {
@@ -25,11 +26,11 @@ public class SeguridadAuditoriaService {
 
     private final SeguridadAuditoriaRepository seguridadAuditoriaRepository;
     private final AuthTokenService authTokenService;
-    private final co.edu.unbosque.apihorarios.security.UserSessionRegistry sessionRegistry;
+    private final UserSessionRegistry sessionRegistry;
 
     public SeguridadAuditoriaService(SeguridadAuditoriaRepository seguridadAuditoriaRepository,
                                      AuthTokenService authTokenService,
-                                     co.edu.unbosque.apihorarios.security.UserSessionRegistry sessionRegistry) {
+                                     UserSessionRegistry sessionRegistry) {
         this.seguridadAuditoriaRepository = seguridadAuditoriaRepository;
         this.authTokenService = authTokenService;
         this.sessionRegistry = sessionRegistry;
@@ -48,22 +49,17 @@ public class SeguridadAuditoriaService {
                 throw new UnauthorizedException("RF-23", INVALID_CREDENTIALS_MESSAGE);
             }
 
-            String dbContrasena = usuario.getContrasena() != null ? usuario.getContrasena() : "";
+            String dbContrasena = usuario.getContrasena() != null ? usuario.getContrasena().trim() : "";
             String inputHash = hashPassword(rawPassword);
 
-            boolean passwordValido;
-            if ("HASH_PENDIENTE_BACKEND".equals(dbContrasena)) {
-                passwordValido = rawPassword.equalsIgnoreCase(usuario.getNombreUsuario())
-                        || "123456".equals(rawPassword);
-            } else {
-                passwordValido = dbContrasena.equalsIgnoreCase(inputHash);
-            }
+            // RNF-04: Comparación criptográfica estricta contra el hash real en base de datos
+            boolean passwordValido = !dbContrasena.isBlank() && dbContrasena.equalsIgnoreCase(inputHash);
 
             if (!passwordValido) {
                 throw new UnauthorizedException("RF-23", INVALID_CREDENTIALS_MESSAGE);
             }
 
-            // RNF-04: Nunca devolver la contraseña
+            // RNF-04: Nunca devolver la contraseña ni su hash
             usuario.setContrasena(null);
             String token = authTokenService.generateToken(usuario);
             sessionRegistry.registerSession(usuario, token);
@@ -82,33 +78,35 @@ public class SeguridadAuditoriaService {
         return currentUser;
     }
 
-    public LoginResponse refrescarSesion(String authHeader, Usuario fallbackUser) {
-        Usuario usuario = null;
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            String token = authHeader.substring(7).trim();
-            try {
-                usuario = authTokenService.verifyTokenAllowExpired(token);
-            } catch (Exception ignored) {
+    /**
+     * Refresca una sesión activa. Exige un token Bearer válido y vigente (RNF-04).
+     * No permite fabricación de sesiones mediante fallbackUser sin autenticar.
+     */
+    public LoginResponse refrescarSesion(String authHeader) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            throw new UnauthorizedException("RF-23", "Token de autorización ausente o inválido.");
+        }
+        String token = authHeader.substring(7).trim();
+        Usuario tokenUser = authTokenService.verifyToken(token);
+
+        boolean prevForce = AuthContextHolder.isForceAuthLookup();
+        AuthContextHolder.setForceAuthLookup(true);
+        try {
+            Usuario usuarioDb = seguridadAuditoriaRepository.obtenerUsuarioPorId(tokenUser.getIdUsuario());
+            if (usuarioDb == null || !Boolean.TRUE.equals(usuarioDb.getActivo())) {
+                sessionRegistry.removeSession(tokenUser.getIdUsuario());
+                throw new UnauthorizedException("RF-23", INVALID_CREDENTIALS_MESSAGE);
             }
+
+            usuarioDb.setContrasena(null);
+            String newToken = authTokenService.generateToken(usuarioDb);
+            sessionRegistry.registerSession(usuarioDb, newToken);
+            return new LoginResponse(newToken, usuarioDb);
+        } catch (SQLException e) {
+            throw new UnauthorizedException("RF-23", "Error al verificar la vigencia del usuario en la base de datos.");
+        } finally {
+            AuthContextHolder.setForceAuthLookup(prevForce);
         }
-        if (usuario == null && fallbackUser != null && fallbackUser.getIdUsuario() != null && fallbackUser.getNombreUsuario() != null) {
-            usuario = new Usuario(
-                    fallbackUser.getIdUsuario(),
-                    fallbackUser.getNombreUsuario(),
-                    null,
-                    true,
-                    fallbackUser.getIdRol() != null ? fallbackUser.getIdRol() : 1,
-                    fallbackUser.getNombreRol() != null ? fallbackUser.getNombreRol() : "ADMINISTRADOR",
-                    fallbackUser.getIdDocente(),
-                    fallbackUser.getNombreDocente()
-            );
-        }
-        if (usuario == null) {
-            throw new UnauthorizedException("RF-23", INVALID_CREDENTIALS_MESSAGE);
-        }
-        String newToken = authTokenService.generateToken(usuario);
-        sessionRegistry.registerSession(usuario, newToken);
-        return new LoginResponse(newToken, usuario);
     }
 
     public void cerrarSesion(String authHeader) {
@@ -122,8 +120,16 @@ public class SeguridadAuditoriaService {
         }
     }
 
-    public List<co.edu.unbosque.apihorarios.security.UserSessionRegistry.ActiveSession> listarSesionesActivas() {
-        return sessionRegistry.getActiveSessions();
+    /**
+     * Consulta de sesiones activas restringida al rol ADMINISTRADOR (RF-23).
+     * RNF-04: Los DTOs retornados jamás contienen los tokens de sesión.
+     */
+    public List<ActiveSessionDto> listarSesionesActivas() {
+        Usuario currentUser = AuthContextHolder.getCurrentUser();
+        if (currentUser == null || !"ADMINISTRADOR".equalsIgnoreCase(currentUser.getNombreRol())) {
+            throw new UnauthorizedException("RF-23", "Acceso denegado: solo el Administrador puede consultar sesiones activas.");
+        }
+        return sessionRegistry.getActiveSessionDtos();
     }
 
     public List<Rol> listarRoles() throws SQLException {
@@ -159,7 +165,10 @@ public class SeguridadAuditoriaService {
     }
 
     // RNF-04: Las contraseñas se guardan como hash SHA-256, nunca en texto plano
-    private String hashPassword(String rawPassword) {
+    public String hashPassword(String rawPassword) {
+        if (rawPassword == null) {
+            return "";
+        }
         if (rawPassword.startsWith("$2a$") || rawPassword.startsWith("$2b$") || rawPassword.length() == 64) {
             return rawPassword;
         }

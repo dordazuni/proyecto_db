@@ -16,19 +16,32 @@ import java.util.regex.Pattern;
 @Service
 public class AuthTokenService {
 
-    private static final long EXPIRATION_SECONDS = 24L * 60L * 60L; // 24 horas (auto-renovable)
+    // Vigencia del token: 24 horas por defecto (RNF-04)
+    private static final long DEFAULT_EXPIRATION_SECONDS = 24L * 60L * 60L;
     private static final String HMAC_ALG = "HmacSHA256";
 
     private final byte[] secretBytes;
+    private final long expirationSeconds;
 
+    @org.springframework.beans.factory.annotation.Autowired
     public AuthTokenService(
-            @Value("${sigh.jwt.secret:SIGH_JWT_SECRET_KEY_2026_UNBOSQUE_HORARIOS_RNF04}") String secret) {
+            @Value("${sigh.jwt.secret:SIGH_JWT_SECRET_KEY_2026_UNBOSQUE_HORARIOS_RNF04}") String secret,
+            @Value("${sigh.jwt.expiration-seconds:86400}") long expirationSeconds) {
         this.secretBytes = secret.getBytes(StandardCharsets.UTF_8);
+        this.expirationSeconds = expirationSeconds > 0 ? expirationSeconds : DEFAULT_EXPIRATION_SECONDS;
+    }
+
+    public AuthTokenService(String secret) {
+        this(secret, DEFAULT_EXPIRATION_SECONDS);
     }
 
     public String generateToken(Usuario usuario) {
+        return generateToken(usuario, this.expirationSeconds);
+    }
+
+    public String generateToken(Usuario usuario, long expirationInSeconds) {
         long now = Instant.now().getEpochSecond();
-        long exp = now + EXPIRATION_SECONDS;
+        long exp = now + expirationInSeconds;
 
         String headerJson = "{\"alg\":\"HS256\",\"typ\":\"JWT\"}";
         String payloadJson = String.format(
@@ -50,16 +63,12 @@ public class AuthTokenService {
         return signingInput + "." + signatureB64;
     }
 
-    public Usuario verifyToken(String token) {
-        return parseAndVerifyToken(token, false);
-    }
-
     /**
-     * Verifica la firma del token incluso si ya expiró su campo 'exp',
-     * permitiendo refrescar el token automáticamente sin cerrar la sesión del usuario.
+     * Valida la firma criptográfica HMAC y que el token no haya expirado.
+     * Si el token está vencido o adulterado, arroja UnauthorizedException (RNF-04).
      */
-    public Usuario verifyTokenAllowExpired(String token) {
-        return parseAndVerifyToken(token, true);
+    public Usuario verifyToken(String token) {
+        return parseAndVerifyToken(token);
     }
 
     public boolean isTokenExpired(String token) {
@@ -75,7 +84,7 @@ public class AuthTokenService {
         }
     }
 
-    private Usuario parseAndVerifyToken(String token, boolean allowExpired) {
+    private Usuario parseAndVerifyToken(String token) {
         if (token == null || token.isBlank()) {
             throw new UnauthorizedException("RF-23", "Token de autenticación ausente.");
         }
@@ -99,12 +108,10 @@ public class AuthTokenService {
             throw new UnauthorizedException("RF-23", "Token malformado.");
         }
 
-        if (!allowExpired) {
-            Long exp = extractLong(payloadJson, "exp");
-            long now = Instant.now().getEpochSecond();
-            if (exp == null || now > exp) {
-                throw new UnauthorizedException("RF-23", "La sesión ha expirado. Inicie sesión nuevamente.");
-            }
+        Long exp = extractLong(payloadJson, "exp");
+        long now = Instant.now().getEpochSecond();
+        if (exp == null || now > exp) {
+            throw new UnauthorizedException("RF-23", "La sesión ha expirado. Inicie sesión nuevamente.");
         }
 
         Integer idUsuario = extractInt(payloadJson, "idUsuario");

@@ -148,11 +148,11 @@ JOIN tipo_contrato tc ON tc.nombre = x.contrato;
 -- =====================================================================
 -- 4. Usuarios de la aplicación (RF-23), uno por rol, más tres docentes
 --    vinculados (VINCULAR 1:1) para probar la seguridad por fila.
--- La contraseña es un marcador: el backend genera y guarda el hash real
--- (RNF-04). Nadie puede entrar con este valor.
+-- Contraseñas cifradas con hash SHA-256 de '123456' (RNF-04).
+-- Hash SHA-256: 8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92
 -- =====================================================================
 INSERT INTO usuario (nombre_usuario, contrasena, id_rol, id_docente)
-SELECT x.usuario, 'HASH_PENDIENTE_BACKEND', r.id_rol, d.id_docente
+SELECT x.usuario, '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92', r.id_rol, d.id_docente
 FROM (VALUES
         ('admin',         'ADMINISTRADOR', NULL),
         ('coordinador',   'COORDINADOR',   NULL),

@@ -1,8 +1,11 @@
 package co.edu.unbosque.apihorarios.security;
 
 import co.edu.unbosque.apihorarios.model.Usuario;
+import co.edu.unbosque.apihorarios.security.UserSessionRegistry.ActiveSessionDto;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -57,6 +60,35 @@ class SeguridadAuthUnitTests {
         String tokenManipulado = token.substring(0, token.length() - 4) + "XXXX";
 
         assertThrows(UnauthorizedException.class, () -> tokenService.verifyToken(tokenManipulado));
+    }
+
+    @Test
+    void rechazarTokenExpiradoCon401() {
+        AuthTokenService tokenService = new AuthTokenService(TEST_SECRET);
+
+        Usuario admin = new Usuario(1, "admin", null, true, 1, "ADMINISTRADOR", null, null);
+
+        // Generar un token con expiración en el pasado (-10 segundos)
+        String expiredToken = tokenService.generateToken(admin, -10L);
+        assertTrue(tokenService.isTokenExpired(expiredToken));
+
+        UnauthorizedException ex = assertThrows(UnauthorizedException.class, () -> tokenService.verifyToken(expiredToken));
+        assertTrue(ex.getMessage().contains("ha expirado"), "Debe indicar que la sesión ha expirado");
+    }
+
+    @Test
+    void sesionesActivasNoExponenToken() {
+        UserSessionRegistry registry = new UserSessionRegistry();
+        Usuario admin = new Usuario(1, "admin", null, true, 1, "ADMINISTRADOR", null, null);
+
+        registry.registerSession(admin, "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.SECRET_TOKEN_VALUE.SIG");
+
+        List<ActiveSessionDto> sesiones = registry.getActiveSessionDtos();
+        assertFalse(sesiones.isEmpty());
+        ActiveSessionDto dto = sesiones.get(0);
+        assertEquals("admin", dto.nombreUsuario());
+        assertEquals("ADMINISTRADOR", dto.nombreRol());
+        // El DTO no tiene campo token accesible
     }
 
     @Test

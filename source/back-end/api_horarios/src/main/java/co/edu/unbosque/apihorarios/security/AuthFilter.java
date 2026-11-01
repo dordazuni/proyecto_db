@@ -42,13 +42,12 @@ public class AuthFilter extends OncePerRequestFilter {
             path = request.getRequestURI();
         }
 
-        // Públicos sin token: GET /api/echo, POST /api/auth/login y POST /api/auth/refresh
+        // Endpoints públicos sin token: GET /echo, POST /auth/login
         boolean isEcho = "GET".equalsIgnoreCase(request.getMethod())
                 && (path.equals("/echo") || path.endsWith("/api/echo"));
         boolean isLogin = "POST".equalsIgnoreCase(request.getMethod())
                 && (path.equals("/auth/login") || path.endsWith("/api/auth/login")
-                    || path.equals("/login") || path.endsWith("/api/login")
-                    || path.equals("/auth/refresh") || path.endsWith("/api/auth/refresh"));
+                    || path.equals("/login") || path.endsWith("/api/login"));
 
         if (isEcho || isLogin) {
             try {
@@ -68,16 +67,9 @@ public class AuthFilter extends OncePerRequestFilter {
 
         String token = authHeader.substring(7).trim();
         try {
-            // Verifica la firma HMAC; si el token había expirado, lo renueva automáticamente
-            boolean expired = authTokenService.isTokenExpired(token);
-            Usuario usuario = authTokenService.verifyTokenAllowExpired(token);
-            if (expired) {
-                String renewedToken = authTokenService.generateToken(usuario);
-                response.setHeader("X-Renewed-Token", renewedToken);
-                sessionRegistry.registerSession(usuario, renewedToken);
-            } else {
-                sessionRegistry.updateAccessTime(usuario.getIdUsuario(), token);
-            }
+            // RNF-04: Verifica la firma y vigencia del token. Tokens expirados son rechazados con 401.
+            Usuario usuario = authTokenService.verifyToken(token);
+            sessionRegistry.updateAccessTime(usuario.getIdUsuario(), token);
             AuthContextHolder.setCurrentUser(usuario);
             filterChain.doFilter(request, response);
         } catch (UnauthorizedException ex) {

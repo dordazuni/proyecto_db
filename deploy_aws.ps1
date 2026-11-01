@@ -17,11 +17,19 @@ param(
     [string]$DbHost = "172.31.33.191",
     [string]$DbPort = "5432",
     [string]$DbName = "sigh",
-    [string]$DbPassword = "W-a?sukT39S7",
+    [string]$DbPassword = $(if ($env:DB_PASSWORD) { $env:DB_PASSWORD } elseif ($env:APP_DB_PASSWORD) { $env:APP_DB_PASSWORD } else { "" }),
     [switch]$SkipBuild
 )
 
 $ErrorActionPreference = "Stop"
+
+if ([string]::IsNullOrWhiteSpace($DbPassword)) {
+    $DbPassword = Read-Host "Ingrese la contrasenia de los roles app_* en PostgreSQL (DB_PASSWORD)"
+    if ([string]::IsNullOrWhiteSpace($DbPassword)) {
+        Write-Host "[ERROR] Se requiere la contrasenia de la base de datos (pase -DbPassword o defina DB_PASSWORD)." -ForegroundColor Red
+        exit 1
+    }
+}
 
 $RootDir = "C:\Users\dorda\IdeaProjects\proyecto_db"
 $FrontendDir = Join-Path $RootDir "source\front-end\front-horarios"

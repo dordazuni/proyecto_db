@@ -5,6 +5,7 @@ import co.edu.unbosque.apihorarios.model.LoginRequest;
 import co.edu.unbosque.apihorarios.model.LoginResponse;
 import co.edu.unbosque.apihorarios.model.Rol;
 import co.edu.unbosque.apihorarios.model.Usuario;
+import co.edu.unbosque.apihorarios.security.UserSessionRegistry.ActiveSessionDto;
 import co.edu.unbosque.apihorarios.service.SeguridadAuditoriaService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -48,20 +50,20 @@ public class SeguridadAuditoriaController {
 
     @PostMapping("/auth/refresh")
     public ResponseEntity<LoginResponse> refrescarToken(
-            @org.springframework.web.bind.annotation.RequestHeader(value = "Authorization", required = false) String authHeader,
-            @RequestBody(required = false) Usuario fallbackUser) {
-        return ResponseEntity.ok(seguridadAuditoriaService.refrescarSesion(authHeader, fallbackUser));
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @RequestBody(required = false) Object ignored) {
+        return ResponseEntity.ok(seguridadAuditoriaService.refrescarSesion(authHeader));
     }
 
     @PostMapping({"/auth/logout", "/logout"})
     public ResponseEntity<Void> logout(
-            @org.springframework.web.bind.annotation.RequestHeader(value = "Authorization", required = false) String authHeader) {
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
         seguridadAuditoriaService.cerrarSesion(authHeader);
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/auth/sessions")
-    public ResponseEntity<List<co.edu.unbosque.apihorarios.security.UserSessionRegistry.ActiveSession>> listarSesionesActivas() {
+    public ResponseEntity<List<ActiveSessionDto>> listarSesionesActivas() {
         return ResponseEntity.ok(seguridadAuditoriaService.listarSesionesActivas());
     }
 

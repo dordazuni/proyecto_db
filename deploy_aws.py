@@ -9,7 +9,7 @@ Uso rápido:
 
 Opciones adicionales:
     python deploy_aws.py --key "C:/ruta/a/connection_keys.pem"
-    python deploy_aws.py --host 18.221.34.127 --db-password "W-a?sukT39S7"
+    python deploy_aws.py --host 18.221.34.127 --db-password "<contraseña>"
     python deploy_aws.py --skip-build   # Solo sube los artefactos ya compilados
 """
 
@@ -31,7 +31,7 @@ DEFAULT_EC2_USER = "ubuntu"
 DEFAULT_DB_HOST = "172.31.33.191"
 DEFAULT_DB_PORT = "5432"
 DEFAULT_DB_NAME = "sigh"
-DEFAULT_DB_PASS = "W-a?sukT39S7"
+DEFAULT_DB_PASS = os.environ.get("DB_PASSWORD") or os.environ.get("APP_DB_PASSWORD") or ""
 DEFAULT_PEM_DIR = Path(r"D:\DATA\Desktop\aws-db-projec")
 DEFAULT_PEM_PATH = DEFAULT_PEM_DIR / "connection_keys.pem"
 
@@ -312,6 +312,17 @@ def main() -> None:
 
     args = parser.parse_args()
 
+    db_password = args.db_password or DEFAULT_DB_PASS
+    if not db_password:
+        import getpass
+        try:
+            db_password = getpass.getpass("Ingrese la contraseña de los roles app_* en PostgreSQL (DB_PASSWORD): ").strip()
+        except Exception:
+            pass
+    if not db_password:
+        print("[ERROR] Falta la contraseña de la BD. Especifíquela con --db-password o la variable de entorno DB_PASSWORD.")
+        sys.exit(1)
+
     for tool in ("ssh", "scp"):
         if not shutil.which(tool):
             print(f"[ERROR] No se encontró el comando '{tool}' en el PATH de Windows. Activa el cliente OpenSSH.")
@@ -341,7 +352,7 @@ def main() -> None:
         db_host=args.db_host,
         db_port=args.db_port,
         db_name=args.db_name,
-        db_password=args.db_password,
+        db_password=db_password,
     )
 
 
