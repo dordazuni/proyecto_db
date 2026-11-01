@@ -34,7 +34,7 @@ import { SeguridadModuleOrganismComponent } from '../../organisms/seguridad-modu
           </div>
           <div>
             <div class="app-title">SIGH — Gestión de Horarios Académicos</div>
-            <div class="app-subtitle">hola estoy conectado a la db · PostgreSQL RDBMS</div>
+            <div class="app-subtitle">Sistema Integrado de Gestión de Horarios · PostgreSQL RDBMS</div>
           </div>
         </div>
 
@@ -52,25 +52,22 @@ import { SeguridadModuleOrganismComponent } from '../../organisms/seguridad-modu
             </select>
           </div>
 
-          <!-- Selector Global de Usuario Activo (Cabecera X-Usuario-Id para Bitácora RF-24 y Roles RF-25) -->
-          <div class="appbar-control-group">
-            <label>Usuario / Rol (X-Usuario-Id):</label>
-            <select
-              class="appbar-select"
-              [ngModel]="sigh.api.activeUserId()"
-              (ngModelChange)="sigh.setActiveUser($event)">
-              @for (u of sigh.usuarios(); track u.idUsuario) {
-                <option [ngValue]="u.idUsuario">
-                  #{{ u.idUsuario }} {{ u.nombreUsuario }} ({{ u.nombreRol || 'Rol ' + u.idRol }})
-                </option>
-              } @empty {
-                <option [ngValue]="1">#1 admin (ADMINISTRADOR)</option>
-              }
-            </select>
-          </div>
+          <!-- Usuario Autenticado desde Token JWT (RF-23, RF-25 y RNF-04) -->
+          @if (sigh.api.authenticatedUser(); as authUser) {
+            <div class="appbar-control-group">
+              <span class="md-chip md-chip-info">
+                <span class="material-icons" style="font-size: 15px">verified_user</span>
+                {{ authUser.nombreUsuario }} ({{ authUser.nombreRol }})
+              </span>
+            </div>
+          }
 
           <button type="button" class="md-btn md-btn-tonal md-btn-sm" (click)="reverificarEcho()">
             <span class="material-icons">sync</span> Verificar /echo
+          </button>
+
+          <button type="button" class="md-btn md-btn-danger md-btn-sm" (click)="cerrarSesion()">
+            <span class="material-icons">logout</span> Cerrar Sesión
           </button>
         </div>
       </header>
@@ -129,10 +126,17 @@ import { SeguridadModuleOrganismComponent } from '../../organisms/seguridad-modu
           </nav>
 
           <div class="drawer-footer">
-            <div class="db-pill">
-              <span class="dot-online"></span>
-              <span>PostgreSQL Activo</span>
-            </div>
+            @if (connectionController.echoData()?.databaseConnected === true) {
+              <div class="db-pill">
+                <span class="dot-online"></span>
+                <span>PostgreSQL Activo</span>
+              </div>
+            } @else {
+              <div class="db-pill" style="color: #991b1b">
+                <span class="dot-online" style="background: #ef4444"></span>
+                <span>PostgreSQL Sin Verificar</span>
+              </div>
+            }
             <small>Arquitectura MVC + Atomic &amp; Material Design</small>
           </div>
         </aside>
@@ -148,13 +152,20 @@ import { SeguridadModuleOrganismComponent } from '../../organisms/seguridad-modu
           @if (sigh.activeModule() === 'inicio') {
             <div class="md-card hero-card">
               <div class="hero-left">
-                <span class="md-chip md-chip-success">
-                  <span class="material-icons" style="font-size: 16px">Storage</span>
-                  CONECTADO A POSTGRESQL (/api/echo)
-                </span>
-                <h1 class="hero-title">hola estoy conectado a la db</h1>
+                @if (connectionController.echoData()?.databaseConnected === true) {
+                  <span class="md-chip md-chip-success">
+                    <span class="material-icons" style="font-size: 16px">storage</span>
+                    CONECTADO A POSTGRESQL (/api/echo)
+                  </span>
+                } @else {
+                  <span class="md-chip md-chip-error">
+                    <span class="material-icons" style="font-size: 16px">error_outline</span>
+                    SIN CONEXIÓN VERIFICADA (/api/echo)
+                  </span>
+                }
+                <h1 class="hero-title">Panel General — SIGH</h1>
                 <p class="hero-desc">
-                  {{ connectionController.echoData()?.message || 'Conexión verificada exitosamente con el motor relacional PostgreSQL (esquema SIGH).' }}
+                  {{ connectionController.echoData()?.message || 'Estado de conexión pendiente de verificación con /api/echo.' }}
                 </p>
                 <div class="hero-actions">
                   <button class="md-btn md-btn-filled" (click)="sigh.setModule('programacion')">
@@ -538,5 +549,10 @@ export class WelcomePageComponent implements OnInit {
 
   reverificarEcho(): void {
     this.router.navigate(['/']);
+  }
+
+  cerrarSesion(): void {
+    this.sigh.api.logout();
+    this.router.navigate(['/login']);
   }
 }

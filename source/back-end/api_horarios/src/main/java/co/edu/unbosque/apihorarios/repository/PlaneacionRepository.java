@@ -2,6 +2,8 @@ package co.edu.unbosque.apihorarios.repository;
 
 import co.edu.unbosque.apihorarios.model.Disponibilidad;
 import co.edu.unbosque.apihorarios.model.Seccion;
+import co.edu.unbosque.apihorarios.model.Usuario;
+import co.edu.unbosque.apihorarios.security.AuthContextHolder;
 import org.springframework.stereotype.Repository;
 
 import javax.sql.DataSource;
@@ -181,14 +183,29 @@ public class PlaneacionRepository {
     // RF-11: Disponibilidad de Docentes (disponibilidad)
     // =====================================================================
     public List<Disponibilidad> listarDisponibilidad(Integer idDocente, Integer idPeriodo) throws SQLException {
-        StringBuilder sql = new StringBuilder(
-                "SELECT disp.id_docente, d.nombres || ' ' || d.apellidos AS nombre_docente, " +
-                "       disp.id_periodo, disp.id_franja, vf.dia_semana, vf.nombre_dia, " +
-                "       vf.hora_inicio, vf.hora_fin, disp.tipo " +
-                "FROM disponibilidad disp " +
-                "JOIN docente d ON d.id_docente = disp.id_docente " +
-                "JOIN v_franja vf ON vf.id_franja = disp.id_franja " +
-                "WHERE 1 = 1 ");
+        Usuario currentUser = AuthContextHolder.getCurrentUser();
+        boolean isDocenteRole = currentUser != null && "DOCENTE".equalsIgnoreCase(currentUser.getNombreRol());
+
+        StringBuilder sql;
+        if (isDocenteRole) {
+            // rol_docente tiene SELECT sobre disponibilidad y v_franja (con RLS pol_disp_docente_propia), no sobre tabla docente
+            sql = new StringBuilder(
+                    "SELECT disp.id_docente, 'Docente #' || disp.id_docente AS nombre_docente, " +
+                    "       disp.id_periodo, disp.id_franja, vf.dia_semana, vf.nombre_dia, " +
+                    "       vf.hora_inicio, vf.hora_fin, disp.tipo " +
+                    "FROM disponibilidad disp " +
+                    "JOIN v_franja vf ON vf.id_franja = disp.id_franja " +
+                    "WHERE 1 = 1 ");
+        } else {
+            sql = new StringBuilder(
+                    "SELECT disp.id_docente, d.nombres || ' ' || d.apellidos AS nombre_docente, " +
+                    "       disp.id_periodo, disp.id_franja, vf.dia_semana, vf.nombre_dia, " +
+                    "       vf.hora_inicio, vf.hora_fin, disp.tipo " +
+                    "FROM disponibilidad disp " +
+                    "JOIN docente d ON d.id_docente = disp.id_docente " +
+                    "JOIN v_franja vf ON vf.id_franja = disp.id_franja " +
+                    "WHERE 1 = 1 ");
+        }
         if (idDocente != null) {
             sql.append("AND disp.id_docente = ? ");
         }

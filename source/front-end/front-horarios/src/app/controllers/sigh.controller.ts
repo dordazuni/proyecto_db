@@ -134,17 +134,6 @@ export class SighController {
     }
   }
 
-  setActiveUser(idUsuario: number): void {
-    this.api.activeUserId.set(Number(idUsuario));
-    const user = this.usuarios().find((u) => u.idUsuario === Number(idUsuario));
-    if (user) {
-      this.showSuccess(
-        'Usuario activo cambiado',
-        `Operando como ${user.nombreUsuario} (Rol: ${user.nombreRol || user.idRol}) — Cabecera X-Usuario-Id=${user.idUsuario}`
-      );
-    }
-  }
-
   clearAlert(): void {
     this.alert.set(null);
   }
@@ -156,11 +145,12 @@ export class SighController {
   handleApiError(err: any, fallbackTitle = 'Operación rechazada por la Base de Datos'): void {
     this.loading.set(false);
     const apiErr: Partial<ApiErrorResponse> = err?.error && typeof err.error === 'object' ? err.error : {};
-    const rawMsg =
+    const rawMsg = (
       apiErr.message ||
       (typeof err?.error === 'string' ? err.error : null) ||
       err?.message ||
-      'Error al procesar la solicitud en el servidor.';
+      'Error al procesar la solicitud en el servidor.'
+    ).replace(/^ERROR:\s*/i, '');
     const regla = apiErr.regla && apiErr.regla !== 'N/A' ? apiErr.regla : undefined;
     const sqlState = apiErr.sqlState || undefined;
 
@@ -532,20 +522,6 @@ export class SighController {
         this.cargarVersiones(this.selectedPeriodoId());
       },
       error: (err) => this.handleApiError(err, 'Rechazo al sincronizar versión (RF-17 / RN-17)')
-    });
-  }
-
-  clonarVersion(idVersion: number): void {
-    this.api.clonarVersion(idVersion).subscribe({
-      next: (v) => {
-        this.showSuccess(
-          'RF-18 | Versión clonada',
-          `Se creó la nueva versión v${v.numeroVersion} en estado EN_EDICION a partir de la versión avalada.`
-        );
-        this.cargarVersiones(this.selectedPeriodoId());
-        this.seleccionarVersion(v.idVersion!);
-      },
-      error: (err) => this.handleApiError(err, 'No se pudo clonar la versión (RF-18)')
     });
   }
 

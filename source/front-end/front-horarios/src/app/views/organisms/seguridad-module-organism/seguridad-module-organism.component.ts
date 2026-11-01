@@ -93,13 +93,7 @@ import { Usuario } from '../../../models/sigh.models';
                   </td>
                   <td>
                     <button
-                      class="md-btn md-btn-tonal md-btn-sm"
-                      (click)="sigh.setActiveUser(u.idUsuario!)">
-                      <span class="material-icons">login</span> Usar este Usuario (X-Usuario-Id)
-                    </button>
-                    <button
                       class="md-btn md-btn-outlined md-btn-sm"
-                      style="margin-left: 6px"
                       (click)="toggleEstadoUsuario(u)">
                       {{ u.activo ? 'Desactivar' : 'Activar' }}
                     </button>

@@ -1,6 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { EchoService } from '../services/echo.service';
+import { SighApiService } from '../services/sigh-api.service';
 import { EchoResponse } from '../models/echo-response.model';
 import { API_CONFIG } from '../config/api.config';
 
@@ -9,6 +10,7 @@ import { API_CONFIG } from '../config/api.config';
 })
 export class ConnectionController {
   private readonly echoService = inject(EchoService);
+  private readonly sighApi = inject(SighApiService);
   private readonly router = inject(Router);
 
   readonly loading = signal<boolean>(false);
@@ -23,18 +25,15 @@ export class ConnectionController {
     this.echoService.checkEcho().subscribe({
       next: (response: EchoResponse) => {
         this.loading.set(false);
-        if (response.databaseConnected !== false) {
-          this.router.navigate(['/bienvenida']);
+        if (response?.databaseConnected === true) {
+          const targetRoute = this.sighApi.isAuthenticated() ? '/bienvenida' : '/login';
+          this.router.navigate([targetRoute]);
         } else {
           this.errorMessage.set(response?.message || 'La base de datos no está disponible.');
         }
       },
       error: (err) => {
         this.loading.set(false);
-        if (err?.status >= 200 && err?.status < 300) {
-          this.router.navigate(['/bienvenida']);
-          return;
-        }
         const backendMsg = err?.error?.message;
         this.errorMessage.set(
           backendMsg || `No se pudo conectar con el servicio ${this.endpointUrl}`

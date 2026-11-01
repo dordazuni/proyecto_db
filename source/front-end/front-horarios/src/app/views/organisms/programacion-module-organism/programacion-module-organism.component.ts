@@ -10,16 +10,16 @@ import { Franja, HorarioDetalle } from '../../../models/sigh.models';
   standalone: true,
   imports: [CommonModule, FormsModule, TimetableGridOrganismComponent],
   template: `
-    <!-- RF-12, RF-15, RF-16, RF-17, RF-18: FLUJO DE VERSIONES DE HORARIO -->
+    <!-- RF-12, RF-15, RF-16, RF-17: FLUJO DE VERSIONES DE HORARIO -->
     <div class="md-card">
       <div class="md-card-header">
         <div>
           <h3 class="md-card-title">
             <span class="material-icons">account_tree</span>
-            RF-12 a RF-18 | Gestión de Versiones y Flujo de Aprobación (RN-16, RN-17)
+            RF-12 a RF-17 | Gestión de Versiones y Flujo de Aprobación (RN-16, RN-17)
           </h3>
           <p class="md-card-subtitle">
-            Flujo de estados: <strong>EN_EDICION → PENDIENTE → AVALADO → SINCRONIZADO</strong> (con devolución a EN_EDICION o clonación RF-18).
+            Flujo de estados: <strong>EN_EDICION → PENDIENTE → AVALADO → SINCRONIZADO</strong> (con devolución a EN_EDICION).
           </p>
         </div>
         <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap">
@@ -29,7 +29,7 @@ import { Franja, HorarioDetalle } from '../../../models/sigh.models';
         </div>
       </div>
 
-      <!-- Barra de Versión Activa y Botones del Flujo (RF-15, RF-16, RF-17, RF-18) -->
+      <!-- Barra de Versión Activa y Botones del Flujo (RF-15, RF-16, RF-17) -->
       <div class="version-bar">
         <div class="md-field" style="min-width: 260px">
           <label>Versión de Horario Activa</label>
@@ -86,23 +86,18 @@ import { Franja, HorarioDetalle } from '../../../models/sigh.models';
               </button>
             }
 
-            <!-- RF-17 y RF-18: AVALADO -> SINCRONIZADO o CLONAR -->
-            @if (ver.estado === 'AVALADO' || ver.estado === 'SINCRONIZADO') {
-              @if (ver.estado === 'AVALADO') {
-                <div style="display: flex; gap: 6px; align-items: center">
-                  <input
-                    class="md-input"
-                    style="width: 190px; padding: 6px 10px"
-                    [(ngModel)]="idDocumentoExterno"
-                    placeholder="ID Doc (Ej. DOC-EXT-2026-01)" />
-                  <button class="md-btn md-btn-filled" (click)="sincronizar(ver.idVersion!)">
-                    <span class="material-icons">cloud_sync</span> RF-17 Sincronizar
-                  </button>
-                </div>
-              }
-              <button class="md-btn md-btn-tonal" (click)="sigh.clonarVersion(ver.idVersion!)">
-                <span class="material-icons">content_copy</span> RF-18 Clonar a Nueva Versión
-              </button>
+            <!-- RF-17: AVALADO -> SINCRONIZADO -->
+            @if (ver.estado === 'AVALADO') {
+              <div style="display: flex; gap: 6px; align-items: center">
+                <input
+                  class="md-input"
+                  style="width: 190px; padding: 6px 10px"
+                  [(ngModel)]="idDocumentoExterno"
+                  placeholder="ID Doc (Ej. DOC-EXT-2026-01)" />
+                <button class="md-btn md-btn-filled" (click)="sincronizar(ver.idVersion!)">
+                  <span class="material-icons">cloud_sync</span> RF-17 Sincronizar
+                </button>
+              </div>
             }
           </div>
         }
@@ -177,7 +172,7 @@ import { Franja, HorarioDetalle } from '../../../models/sigh.models';
 
           <div>
             <button class="md-btn md-btn-filled" [disabled]="!esEditable()" (click)="asignarSesion()">
-              <span class="material-icons">add_Task</span> RF-13 Asignar Sesión
+              <span class="material-icons">add_task</span> RF-13 Asignar Sesión
             </button>
           </div>
         </div>
@@ -249,7 +244,7 @@ export class ProgramacionModuleOrganismComponent implements OnInit {
 
   readonly esEditable = computed(() => {
     const estado = this.sigh.selectedVersion()?.estado;
-    return estado === 'EN_EDICION' || estado === 'PENDIENTE';
+    return estado === 'EN_EDICION';
   });
 
   ngOnInit(): void {

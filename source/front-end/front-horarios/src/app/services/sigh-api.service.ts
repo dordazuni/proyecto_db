@@ -1,6 +1,6 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, tap } from 'rxjs';
 import { API_CONFIG } from '../config/api.config';
 import {
   Asignacion,
@@ -15,6 +15,8 @@ import {
   Franja,
   HorarioDetalle,
   LogAuditoria,
+  LoginRequest,
+  LoginResponse,
   ParametroSistema,
   PeriodoAcademico,
   Recurso,
@@ -28,6 +30,9 @@ import {
   VersionHorario
 } from '../models/sigh.models';
 
+const SESSION_TOKEN_KEY = 'sigh_auth_token';
+const SESSION_USER_KEY = 'sigh_auth_user';
+
 @Injectable({
   providedIn: 'root'
 })
@@ -35,14 +40,91 @@ export class SighApiService {
   private readonly http = inject(HttpClient);
   readonly baseUrl = API_CONFIG.baseUrl;
 
-  /** ID del usuario activo para cabecera X-Usuario-Id (bitácora RF-24 y permisos RF-25) */
-  readonly activeUserId = signal<number>(1);
+  /** Token JWT y Usuario autenticado en sesión (RF-23, RF-25 y RNF-04) */
+  readonly authToken = signal<string | null>(this.loadStoredToken());
+  readonly authenticatedUser = signal<Usuario | null>(this.loadStoredUser());
+  readonly isAuthenticated = computed(() => !!this.authToken() && this.authenticatedUser() !== null);
 
-  private getHeaders(): HttpHeaders {
-    return new HttpHeaders({
-      'Content-Type': 'application/json',
-      'X-Usuario-Id': String(this.activeUserId())
-    });
+  /** ID del usuario autenticado actual (solo lectura desde la sesión del token) */
+  readonly activeUserId = computed<number>(() => this.authenticatedUser()?.idUsuario ?? 0);
+
+  private loadStoredToken(): string | null {
+    try {
+      return localStorage.getItem(SESSION_TOKEN_KEY);
+    } catch {
+      return null;
+    }
+  }
+
+  private loadStoredUser(): Usuario | null {
+    try {
+      const raw = localStorage.getItem(SESSION_USER_KEY);
+      return raw ? (JSON.parse(raw) as Usuario) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  setSession(token: string, usuario: Usuario): void {
+    this.authToken.set(token);
+    this.authenticatedUser.set(usuario);
+    try {
+      localStorage.setItem(SESSION_TOKEN_KEY, token);
+      localStorage.setItem(SESSION_USER_KEY, JSON.stringify(usuario));
+    } catch {
+      // ignore storage errors
+    }
+  }
+
+  setSessionUser(usuario: Usuario): void {
+    this.authenticatedUser.set(usuario);
+    try {
+      localStorage.setItem(SESSION_USER_KEY, JSON.stringify(usuario));
+    } catch {
+      // ignore storage errors
+    }
+  }
+
+  logout(): void {
+    this.authToken.set(null);
+    this.authenticatedUser.set(null);
+    try {
+      localStorage.removeItem(SESSION_TOKEN_KEY);
+      localStorage.removeItem(SESSION_USER_KEY);
+    } catch {
+      // ignore storage errors
+    }
+  }
+
+  login(credentials: LoginRequest): Observable<LoginResponse> {
+    return this.http.post<LoginResponse>(`${this.baseUrl}/auth/login`, credentials).pipe(
+      tap((res: LoginResponse) => {
+        if (res?.token && res?.usuario) {
+          this.setSession(res.token, res.usuario);
+        }
+      })
+    );
+  }
+
+  obtenerSesionActual(): Observable<Usuario> {
+    return this.http.get<Usuario>(`${this.baseUrl}/auth/me`, { headers: this.getHeaders() }).pipe(
+      tap((usuario: Usuario) => {
+        if (usuario) {
+          this.setSessionUser(usuario);
+        }
+      })
+    );
+  }
+
+  getHeaders(): HttpHeaders {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json'
+    };
+    const token = this.authToken();
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    return new HttpHeaders(headers);
   }
 
   // =========================================================================
@@ -51,11 +133,11 @@ export class SighApiService {
 
   // RF-01: Períodos Académicos
   listarPeriodos(): Observable<PeriodoAcademico[]> {
-    return this.http.get<PeriodoAcademico[]>(`${this.baseUrl}/periodos`);
+    return this.http.get<PeriodoAcademico[]>(`${this.baseUrl}/periodos`, { headers: this.getHeaders() });
   }
 
   obtenerPeriodo(id: number): Observable<PeriodoAcademico> {
-    return this.http.get<PeriodoAcademico>(`${this.baseUrl}/periodos/${id}`);
+    return this.http.get<PeriodoAcademico>(`${this.baseUrl}/periodos/${id}`, { headers: this.getHeaders() });
   }
 
   crearPeriodo(periodo: PeriodoAcademico): Observable<PeriodoAcademico> {
@@ -72,29 +154,29 @@ export class SighApiService {
 
   // RF-02: Tipos de Contrato y Docentes (solo lectura RN-19)
   listarTiposContrato(): Observable<TipoContrato[]> {
-    return this.http.get<TipoContrato[]>(`${this.baseUrl}/tipos-contrato`);
+    return this.http.get<TipoContrato[]>(`${this.baseUrl}/tipos-contrato`, { headers: this.getHeaders() });
   }
 
   listarDocentes(): Observable<Docente[]> {
-    return this.http.get<Docente[]>(`${this.baseUrl}/docentes`);
+    return this.http.get<Docente[]>(`${this.baseUrl}/docentes`, { headers: this.getHeaders() });
   }
 
   obtenerDocente(id: number): Observable<Docente> {
-    return this.http.get<Docente>(`${this.baseUrl}/docentes/${id}`);
+    return this.http.get<Docente>(`${this.baseUrl}/docentes/${id}`, { headers: this.getHeaders() });
   }
 
   // RF-03: Espacios Físicos (solo lectura RN-19)
   listarEspacios(): Observable<Espacio[]> {
-    return this.http.get<Espacio[]>(`${this.baseUrl}/espacios`);
+    return this.http.get<Espacio[]>(`${this.baseUrl}/espacios`, { headers: this.getHeaders() });
   }
 
   obtenerEspacio(id: number): Observable<Espacio> {
-    return this.http.get<Espacio>(`${this.baseUrl}/espacios/${id}`);
+    return this.http.get<Espacio>(`${this.baseUrl}/espacios/${id}`, { headers: this.getHeaders() });
   }
 
   // RF-04: Catálogo de Recursos y Dotación por Espacio
   listarRecursos(): Observable<Recurso[]> {
-    return this.http.get<Recurso[]>(`${this.baseUrl}/recursos`);
+    return this.http.get<Recurso[]>(`${this.baseUrl}/recursos`, { headers: this.getHeaders() });
   }
 
   crearRecurso(recurso: Recurso): Observable<Recurso> {
@@ -110,7 +192,9 @@ export class SighApiService {
   }
 
   listarRecursosDeEspacio(idEspacio: number): Observable<EspacioRecurso[]> {
-    return this.http.get<EspacioRecurso[]>(`${this.baseUrl}/espacios/${idEspacio}/recursos`);
+    return this.http.get<EspacioRecurso[]>(`${this.baseUrl}/espacios/${idEspacio}/recursos`, {
+      headers: this.getHeaders()
+    });
   }
 
   asignarRecursoAEspacio(idEspacio: number, idRecurso: number, cantidad: number): Observable<EspacioRecurso> {
@@ -138,11 +222,11 @@ export class SighApiService {
 
   // RF-05: Cursos y Recursos Requeridos por Curso
   listarCursos(): Observable<Curso[]> {
-    return this.http.get<Curso[]>(`${this.baseUrl}/cursos`);
+    return this.http.get<Curso[]>(`${this.baseUrl}/cursos`, { headers: this.getHeaders() });
   }
 
   obtenerCurso(id: number): Observable<Curso> {
-    return this.http.get<Curso>(`${this.baseUrl}/cursos/${id}`);
+    return this.http.get<Curso>(`${this.baseUrl}/cursos/${id}`, { headers: this.getHeaders() });
   }
 
   crearCurso(curso: Curso): Observable<Curso> {
@@ -158,7 +242,9 @@ export class SighApiService {
   }
 
   listarRecursosDeCurso(idCurso: number): Observable<CursoRecurso[]> {
-    return this.http.get<CursoRecurso[]>(`${this.baseUrl}/cursos/${idCurso}/recursos`);
+    return this.http.get<CursoRecurso[]>(`${this.baseUrl}/cursos/${idCurso}/recursos`, {
+      headers: this.getHeaders()
+    });
   }
 
   agregarRecursoACurso(idCurso: number, idRecurso: number): Observable<CursoRecurso> {
@@ -178,11 +264,15 @@ export class SighApiService {
 
   // RF-06: Habilitación de Docentes por Curso
   listarCursosPorDocente(idDocente: number): Observable<DocenteCurso[]> {
-    return this.http.get<DocenteCurso[]>(`${this.baseUrl}/docentes/${idDocente}/cursos`);
+    return this.http.get<DocenteCurso[]>(`${this.baseUrl}/docentes/${idDocente}/cursos`, {
+      headers: this.getHeaders()
+    });
   }
 
   listarDocentesPorCurso(idCurso: number): Observable<DocenteCurso[]> {
-    return this.http.get<DocenteCurso[]>(`${this.baseUrl}/cursos/${idCurso}/docentes`);
+    return this.http.get<DocenteCurso[]>(`${this.baseUrl}/cursos/${idCurso}/docentes`, {
+      headers: this.getHeaders()
+    });
   }
 
   habilitarDocenteEnCurso(idDocente: number, idCurso: number): Observable<DocenteCurso> {
@@ -202,7 +292,7 @@ export class SighApiService {
 
   // RF-07: Catálogo de 33 Franjas Horarias
   listarFranjas(): Observable<Franja[]> {
-    return this.http.get<Franja[]>(`${this.baseUrl}/franjas`);
+    return this.http.get<Franja[]>(`${this.baseUrl}/franjas`, { headers: this.getHeaders() });
   }
 
   actualizarFranja(id: number, franja: Partial<Franja>): Observable<Franja> {
@@ -213,7 +303,7 @@ export class SighApiService {
 
   // RF-08: Parámetros del Sistema
   listarParametros(): Observable<ParametroSistema[]> {
-    return this.http.get<ParametroSistema[]>(`${this.baseUrl}/parametros`);
+    return this.http.get<ParametroSistema[]>(`${this.baseUrl}/parametros`, { headers: this.getHeaders() });
   }
 
   actualizarParametro(clave: string, parametro: Partial<ParametroSistema>): Observable<ParametroSistema> {
@@ -231,7 +321,7 @@ export class SighApiService {
     let params = new HttpParams();
     if (idPeriodo) params = params.set('idPeriodo', idPeriodo);
     if (idCurso) params = params.set('idCurso', idCurso);
-    return this.http.get<Seccion[]>(`${this.baseUrl}/secciones`, { params });
+    return this.http.get<Seccion[]>(`${this.baseUrl}/secciones`, { params, headers: this.getHeaders() });
   }
 
   crearSeccion(seccion: Seccion): Observable<Seccion> {
@@ -275,13 +365,16 @@ export class SighApiService {
     let params = new HttpParams();
     if (idDocente) params = params.set('idDocente', idDocente);
     if (idPeriodo) params = params.set('idPeriodo', idPeriodo);
-    return this.http.get<Disponibilidad[]>(`${this.baseUrl}/disponibilidad`, { params });
+    return this.http.get<Disponibilidad[]>(`${this.baseUrl}/disponibilidad`, {
+      params,
+      headers: this.getHeaders()
+    });
   }
 
   registrarDisponibilidad(disponibilidad: Disponibilidad): Observable<Disponibilidad> {
     return this.http.post<Disponibilidad>(
       `${this.baseUrl}/disponibilidad`,
-      { ...disponibilidad, idUsuario: this.activeUserId() },
+      disponibilidad,
       { headers: this.getHeaders() }
     );
   }
@@ -298,20 +391,23 @@ export class SighApiService {
   }
 
   // =========================================================================
-  // 03. PROGRAMACIÓN DE HORARIOS (RF-12 a RF-18)
+  // 03. PROGRAMACIÓN DE HORARIOS (RF-12 a RF-17)
   // =========================================================================
 
   // RF-12: Versiones de Horario
   listarVersiones(idPeriodo?: number | null): Observable<VersionHorario[]> {
     let params = new HttpParams();
     if (idPeriodo) params = params.set('idPeriodo', idPeriodo);
-    return this.http.get<VersionHorario[]>(`${this.baseUrl}/versiones`, { params });
+    return this.http.get<VersionHorario[]>(`${this.baseUrl}/versiones`, {
+      params,
+      headers: this.getHeaders()
+    });
   }
 
   crearVersion(idPeriodo: number): Observable<VersionHorario> {
     return this.http.post<VersionHorario>(
       `${this.baseUrl}/versiones`,
-      { idPeriodo, idUsuario: this.activeUserId() },
+      { idPeriodo },
       { headers: this.getHeaders() }
     );
   }
@@ -320,7 +416,7 @@ export class SighApiService {
   enviarVersionAAprobacion(idVersion: number): Observable<VersionHorario> {
     return this.http.patch<VersionHorario>(
       `${this.baseUrl}/versiones/${idVersion}/enviar-aprobacion`,
-      { idUsuario: this.activeUserId() },
+      {},
       { headers: this.getHeaders() }
     );
   }
@@ -329,7 +425,7 @@ export class SighApiService {
   avalarVersion(idVersion: number): Observable<VersionHorario> {
     return this.http.patch<VersionHorario>(
       `${this.baseUrl}/versiones/${idVersion}/avalar`,
-      { idUsuario: this.activeUserId() },
+      {},
       { headers: this.getHeaders() }
     );
   }
@@ -338,7 +434,7 @@ export class SighApiService {
   devolverVersion(idVersion: number): Observable<VersionHorario> {
     return this.http.patch<VersionHorario>(
       `${this.baseUrl}/versiones/${idVersion}/devolver`,
-      { idUsuario: this.activeUserId() },
+      {},
       { headers: this.getHeaders() }
     );
   }
@@ -347,16 +443,7 @@ export class SighApiService {
   sincronizarVersion(idVersion: number, idDocumentoExterno: string): Observable<VersionHorario> {
     return this.http.patch<VersionHorario>(
       `${this.baseUrl}/versiones/${idVersion}/sincronizar`,
-      { idDocumentoExterno, idUsuario: this.activeUserId() },
-      { headers: this.getHeaders() }
-    );
-  }
-
-  // RF-18: Clonar versión avalada a nueva versión EN_EDICION
-  clonarVersion(idVersion: number): Observable<VersionHorario> {
-    return this.http.post<VersionHorario>(
-      `${this.baseUrl}/versiones/${idVersion}/clonar`,
-      { idUsuario: this.activeUserId() },
+      { idDocumentoExterno },
       { headers: this.getHeaders() }
     );
   }
@@ -365,13 +452,16 @@ export class SighApiService {
   listarAsignaciones(idVersion?: number | null): Observable<Asignacion[]> {
     let params = new HttpParams();
     if (idVersion) params = params.set('idVersion', idVersion);
-    return this.http.get<Asignacion[]>(`${this.baseUrl}/asignaciones`, { params });
+    return this.http.get<Asignacion[]>(`${this.baseUrl}/asignaciones`, {
+      params,
+      headers: this.getHeaders()
+    });
   }
 
   crearAsignacion(asignacion: Asignacion): Observable<Asignacion> {
     return this.http.post<Asignacion>(
       `${this.baseUrl}/asignaciones`,
-      { ...asignacion, idUsuario: this.activeUserId() },
+      asignacion,
       { headers: this.getHeaders() }
     );
   }
@@ -379,15 +469,13 @@ export class SighApiService {
   actualizarAsignacion(idAsignacion: number, asignacion: Partial<Asignacion>): Observable<Asignacion> {
     return this.http.put<Asignacion>(
       `${this.baseUrl}/asignaciones/${idAsignacion}`,
-      { ...asignacion, idUsuario: this.activeUserId() },
+      asignacion,
       { headers: this.getHeaders() }
     );
   }
 
   eliminarAsignacion(idAsignacion: number): Observable<{ message: string }> {
-    const params = new HttpParams().set('idUsuario', this.activeUserId());
     return this.http.delete<{ message: string }>(`${this.baseUrl}/asignaciones/${idAsignacion}`, {
-      params,
       headers: this.getHeaders()
     });
   }
@@ -410,7 +498,10 @@ export class SighApiService {
     if (filtros.idEspacio) params = params.set('idEspacio', filtros.idEspacio);
     if (filtros.idSeccion) params = params.set('idSeccion', filtros.idSeccion);
     if (filtros.idPeriodo) params = params.set('idPeriodo', filtros.idPeriodo);
-    return this.http.get<HorarioDetalle[]>(`${this.baseUrl}/reportes/horario`, { params });
+    return this.http.get<HorarioDetalle[]>(`${this.baseUrl}/reportes/horario`, {
+      params,
+      headers: this.getHeaders()
+    });
   }
 
   // RF-20: Carga Horaria Docente
@@ -419,28 +510,40 @@ export class SighApiService {
     if (idVersion) params = params.set('idVersion', idVersion);
     if (idDocente) params = params.set('idDocente', idDocente);
     if (estadoCarga) params = params.set('estadoCarga', estadoCarga);
-    return this.http.get<CargaDocente[]>(`${this.baseUrl}/reportes/carga-docente`, { params });
+    return this.http.get<CargaDocente[]>(`${this.baseUrl}/reportes/carga-docente`, {
+      params,
+      headers: this.getHeaders()
+    });
   }
 
   // RF-21: Secciones en Riesgo de Cierre
   consultarSeccionesRiesgoCierre(periodo?: string | null): Observable<SeccionRiesgoCierre[]> {
     let params = new HttpParams();
     if (periodo) params = params.set('periodo', periodo);
-    return this.http.get<SeccionRiesgoCierre[]>(`${this.baseUrl}/reportes/secciones-riesgo-cierre`, { params });
+    return this.http.get<SeccionRiesgoCierre[]>(`${this.baseUrl}/reportes/secciones-riesgo-cierre`, {
+      params,
+      headers: this.getHeaders()
+    });
   }
 
   // RF-22: Secciones con Sesiones Faltantes
   consultarSeccionesSesionesFaltantes(idVersion?: number | null): Observable<SeccionSesionesFaltantes[]> {
     let params = new HttpParams();
     if (idVersion) params = params.set('idVersion', idVersion);
-    return this.http.get<SeccionSesionesFaltantes[]>(`${this.baseUrl}/reportes/secciones-sesiones-faltantes`, { params });
+    return this.http.get<SeccionSesionesFaltantes[]>(`${this.baseUrl}/reportes/secciones-sesiones-faltantes`, {
+      params,
+      headers: this.getHeaders()
+    });
   }
 
   // RF-22: Sesiones en Días Consecutivos
   consultarSesionesDiasConsecutivos(idVersion?: number | null): Observable<SesionDiasConsecutivos[]> {
     let params = new HttpParams();
     if (idVersion) params = params.set('idVersion', idVersion);
-    return this.http.get<SesionDiasConsecutivos[]>(`${this.baseUrl}/reportes/sesiones-dias-consecutivos`, { params });
+    return this.http.get<SesionDiasConsecutivos[]>(`${this.baseUrl}/reportes/sesiones-dias-consecutivos`, {
+      params,
+      headers: this.getHeaders()
+    });
   }
 
   // =========================================================================
@@ -448,11 +551,11 @@ export class SighApiService {
   // =========================================================================
 
   listarRoles(): Observable<Rol[]> {
-    return this.http.get<Rol[]>(`${this.baseUrl}/roles`);
+    return this.http.get<Rol[]>(`${this.baseUrl}/roles`, { headers: this.getHeaders() });
   }
 
   listarUsuarios(): Observable<Usuario[]> {
-    return this.http.get<Usuario[]>(`${this.baseUrl}/usuarios`);
+    return this.http.get<Usuario[]>(`${this.baseUrl}/usuarios`, { headers: this.getHeaders() });
   }
 
   crearUsuario(usuario: Usuario): Observable<Usuario> {
@@ -476,6 +579,9 @@ export class SighApiService {
     if (filtros?.tablaAfectada) params = params.set('tablaAfectada', filtros.tablaAfectada);
     if (filtros?.accion) params = params.set('accion', filtros.accion);
     if (filtros?.idUsuario) params = params.set('idUsuario', filtros.idUsuario);
-    return this.http.get<LogAuditoria[]>(`${this.baseUrl}/auditoria`, { params });
+    return this.http.get<LogAuditoria[]>(`${this.baseUrl}/auditoria`, {
+      params,
+      headers: this.getHeaders()
+    });
   }
 }

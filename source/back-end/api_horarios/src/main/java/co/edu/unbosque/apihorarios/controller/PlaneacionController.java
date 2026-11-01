@@ -12,7 +12,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -92,26 +91,23 @@ public class PlaneacionController {
 
     @PostMapping("/disponibilidad")
     public ResponseEntity<Disponibilidad> registrarDisponibilidad(
-            @RequestBody Disponibilidad disponibilidad,
-            @RequestHeader(value = "X-Usuario-Id", required = false) Integer idUsuarioHeader) throws SQLException {
+            @RequestBody Disponibilidad disponibilidad) throws SQLException {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(planeacionService.registrarDisponibilidad(disponibilidad, idUsuarioHeader));
+                .body(planeacionService.registrarDisponibilidad(disponibilidad));
     }
 
     @PutMapping("/disponibilidad")
     public ResponseEntity<Disponibilidad> actualizarDisponibilidad(
-            @RequestBody Disponibilidad disponibilidad,
-            @RequestHeader(value = "X-Usuario-Id", required = false) Integer idUsuarioHeader) throws SQLException {
-        return ResponseEntity.ok(planeacionService.registrarDisponibilidad(disponibilidad, idUsuarioHeader));
+            @RequestBody Disponibilidad disponibilidad) throws SQLException {
+        return ResponseEntity.ok(planeacionService.registrarDisponibilidad(disponibilidad));
     }
 
     @DeleteMapping("/disponibilidad")
     public ResponseEntity<Map<String, String>> eliminarDisponibilidad(
             @RequestParam int idDocente,
             @RequestParam int idPeriodo,
-            @RequestParam int idFranja,
-            @RequestHeader(value = "X-Usuario-Id", required = false) Integer idUsuarioHeader) throws SQLException {
-        planeacionService.eliminarDisponibilidad(idDocente, idPeriodo, idFranja, idUsuarioHeader);
+            @RequestParam int idFranja) throws SQLException {
+        planeacionService.eliminarDisponibilidad(idDocente, idPeriodo, idFranja);
         return ResponseEntity.ok(Map.of("message", "Registro de disponibilidad eliminado (franja vuelve a estar disponible)"));
     }
 }
