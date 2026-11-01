@@ -331,3 +331,142 @@ SELECT c.codigo, s.numero
 FROM asignacion a
 JOIN seccion s ON a.id_seccion = s.id_seccion
 JOIN curso c   ON s.id_curso   = c.id_curso;
+
+-- ---------------------------------------------------------------------
+-- Bloque 4: Producto, renombre y división
+-- ---------------------------------------------------------------------
+
+-- Ejercicio 31. Huecos sabatinos en laboratorios de cómputo
+-- Listar todas las combinaciones de laboratorio de cómputo y franja del sábado.
+-- Álgebra: π ESPACIO.codigo, FRANJA.hora_inicio (σ tipo_espacio = 'LAB_COMPUTO' (ESPACIO) × σ dia_semana = 6 (FRANJA))
+-- Resultado esperado: 6 filas
+SELECT e.codigo, f.hora_inicio
+FROM espacio e
+CROSS JOIN franja f
+WHERE e.tipo_espacio = 'LAB_COMPUTO'
+  AND f.dia_semana = 6;
+
+-- Ejercicio 32. La reunión como producto y selección
+-- Obtener cada docente con su tipo de contrato escribiendo la reunión como un producto seguido de una selección.
+-- Álgebra: π DOCENTE.nombres, DOCENTE.apellidos, TIPO_CONTRATO.nombre (σ DOCENTE.id_tipo_contrato = TIPO_CONTRATO.id_tipo_contrato (DOCENTE × TIPO_CONTRATO))
+-- Resultado esperado: 8 filas (el producto sin condición da 8 × 4 = 32 combinaciones)
+SELECT d.nombres, d.apellidos, tc.nombre
+FROM docente d
+CROSS JOIN tipo_contrato tc
+WHERE d.id_tipo_contrato = tc.id_tipo_contrato;
+
+-- Ejercicio 33. Contratos renombrados
+-- Mostrar los tipos de contrato en una relación llamada CONTRATO con columnas tipo y maximo_horas.
+-- Álgebra: ρ CONTRATO(tipo, maximo_horas) (π nombre, horas_max (TIPO_CONTRATO))
+-- Resultado esperado: 4 filas
+SELECT DISTINCT nombre AS tipo, horas_max AS maximo_horas
+FROM tipo_contrato;
+
+-- Ejercicio 34. Docentes con el mismo contrato
+-- Listar los pares de docentes que tienen el mismo tipo de contrato.
+-- Álgebra: π D1.nombres, D2.nombres, TIPO_CONTRATO.nombre ((ρ D1 (DOCENTE) ⋈ D1.id_tipo_contrato = D2.id_tipo_contrato ∧ D1.id_docente < D2.id_docente ρ D2 (DOCENTE)) ⋈ D1.id_tipo_contrato = TIPO_CONTRATO.id_tipo_contrato TIPO_CONTRATO)
+-- Resultado esperado: 6 filas
+SELECT d1.nombres || ' ' || d1.apellidos AS docente_1,
+       d2.nombres || ' ' || d2.apellidos AS docente_2,
+       tc.nombre AS contrato
+FROM docente d1
+JOIN docente d2       ON d1.id_tipo_contrato = d2.id_tipo_contrato
+                     AND d1.id_docente < d2.id_docente
+JOIN tipo_contrato tc ON d1.id_tipo_contrato = tc.id_tipo_contrato;
+
+-- Ejercicio 35. Sesiones en días consecutivos (RN-20)
+-- Listar las secciones que tienen sesiones en días consecutivos dentro de una misma versión.
+-- Álgebra: π CURSO.codigo, SECCION.numero, F1.dia_semana, F2.dia_semana (σ F2.dia_semana − F1.dia_semana = 1 (((((ρ A1 (ASIGNACION) ⋈ A1.id_version = A2.id_version ∧ A1.id_seccion = A2.id_seccion ρ A2 (ASIGNACION)) ⋈ A1.id_franja = F1.id_franja ρ F1 (FRANJA)) ⋈ A2.id_franja = F2.id_franja ρ F2 (FRANJA)) ⋈ A1.id_seccion = SECCION.id_seccion SECCION) ⋈ SECCION.id_curso = CURSO.id_curso CURSO))
+-- Resultado esperado: 1 fila
+SELECT DISTINCT c.codigo, s.numero,
+       f1.dia_semana AS dia_1, f2.dia_semana AS dia_2
+FROM asignacion a1
+JOIN asignacion a2 ON a1.id_version = a2.id_version
+                  AND a1.id_seccion = a2.id_seccion
+JOIN franja f1     ON a1.id_franja  = f1.id_franja
+JOIN franja f2     ON a2.id_franja  = f2.id_franja
+JOIN seccion s     ON a1.id_seccion = s.id_seccion
+JOIN curso c       ON s.id_curso    = c.id_curso
+WHERE f2.dia_semana - f1.dia_semana = 1;
+
+-- Ejercicio 36. Espacios aptos para BD1 (RN-14)
+-- Listar los espacios que ofrecen todos los recursos que requiere Bases de Datos 1.
+-- Álgebra: π id_espacio, id_recurso (ESPACIO_RECURSO) ÷ π CURSO_RECURSO.id_recurso (σ codigo = 'BD1' (CURSO_RECURSO ⋈ CURSO_RECURSO.id_curso = CURSO.id_curso CURSO))
+-- Resultado esperado: 1 fila
+SELECT e.codigo
+FROM espacio e
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM curso_recurso cr
+    JOIN curso c ON cr.id_curso = c.id_curso
+    WHERE c.codigo = 'BD1'
+      AND NOT EXISTS (
+          SELECT 1
+          FROM espacio_recurso er
+          WHERE er.id_espacio = e.id_espacio
+            AND er.id_recurso = cr.id_recurso));
+
+-- Ejercicio 37. Espacios aptos para PROG1
+-- Listar los espacios que ofrecen todos los recursos que requiere Programación 1.
+-- Álgebra: π id_espacio, id_recurso (ESPACIO_RECURSO) ÷ π CURSO_RECURSO.id_recurso (σ codigo = 'PROG1' (CURSO_RECURSO ⋈ CURSO_RECURSO.id_curso = CURSO.id_curso CURSO))
+-- Resultado esperado: 2 filas
+SELECT e.codigo
+FROM espacio e
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM curso_recurso cr
+    JOIN curso c ON cr.id_curso = c.id_curso
+    WHERE c.codigo = 'PROG1'
+      AND NOT EXISTS (
+          SELECT 1
+          FROM espacio_recurso er
+          WHERE er.id_espacio = e.id_espacio
+            AND er.id_recurso = cr.id_recurso));
+
+-- Ejercicio 38. Docentes que cubren los cursos de Laura
+-- Listar los docentes habilitados para todos los cursos que puede dictar Laura Gómez.
+-- Álgebra: π id_docente, id_curso (DOCENTE_CURSO) ÷ π DOCENTE_CURSO.id_curso (σ email = 'laura.gomez@ejemplo.edu' (DOCENTE_CURSO ⋈ DOCENTE_CURSO.id_docente = DOCENTE.id_docente DOCENTE))
+-- Resultado esperado: 2 filas
+SELECT d.nombres, d.apellidos
+FROM docente d
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM docente_curso dl
+    JOIN docente l ON dl.id_docente = l.id_docente
+    WHERE l.email = 'laura.gomez@ejemplo.edu'
+      AND NOT EXISTS (
+          SELECT 1
+          FROM docente_curso dc
+          WHERE dc.id_docente = d.id_docente
+            AND dc.id_curso   = dl.id_curso));
+
+-- Ejercicio 39. Espacios con todos los recursos de tipo EQUIPO
+-- Listar los espacios que ofrecen todos los recursos de categoría EQUIPO.
+-- Álgebra: π id_espacio, id_recurso (ESPACIO_RECURSO) ÷ π id_recurso (σ categoria = 'EQUIPO' (RECURSO))
+-- Resultado esperado: 2 filas
+SELECT e.codigo
+FROM espacio e
+JOIN espacio_recurso er ON e.id_espacio = er.id_espacio
+JOIN recurso r          ON er.id_recurso = r.id_recurso
+WHERE r.categoria = 'EQUIPO'
+GROUP BY e.codigo
+HAVING count(*) = (SELECT count(*) FROM recurso WHERE categoria = 'EQUIPO');
+
+-- Ejercicio 40. Opciones para programar ALG-2
+-- Listar las combinaciones de docente habilitado para Álgebra Lineal y espacio con proyector y capacidad para al menos 30 personas.
+-- Álgebra: π D.nombres, D.apellidos, E.codigo (ρ D (π DOCENTE.* (σ CURSO.codigo = 'ALG' ((DOCENTE ⋈ DOCENTE.id_docente = DOCENTE_CURSO.id_docente DOCENTE_CURSO) ⋈ DOCENTE_CURSO.id_curso = CURSO.id_curso CURSO))) × ρ E (π ESPACIO.* (σ RECURSO.nombre = 'PROYECTOR' ∧ ESPACIO.capacidad ≥ 30 ((ESPACIO ⋈ ESPACIO.id_espacio = ESPACIO_RECURSO.id_espacio ESPACIO_RECURSO) ⋈ ESPACIO_RECURSO.id_recurso = RECURSO.id_recurso RECURSO))))
+-- Resultado esperado: 8 filas
+SELECT d.nombres, d.apellidos, e.codigo
+FROM (SELECT d.*
+      FROM docente d
+      JOIN docente_curso dc ON d.id_docente = dc.id_docente
+      JOIN curso c          ON dc.id_curso  = c.id_curso
+      WHERE c.codigo = 'ALG') d
+CROSS JOIN
+     (SELECT e.*
+      FROM espacio e
+      JOIN espacio_recurso er ON e.id_espacio = er.id_espacio
+      JOIN recurso r          ON er.id_recurso = r.id_recurso
+      WHERE r.nombre = 'PROYECTOR'
+        AND e.capacidad >= 30) e
+ORDER BY 1, 3;
