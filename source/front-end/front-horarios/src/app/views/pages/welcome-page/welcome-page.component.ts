@@ -34,7 +34,7 @@ import { SeguridadModuleOrganismComponent } from '../../organisms/seguridad-modu
           </div>
           <div>
             <div class="app-title">SIGH — Gestión de Horarios Académicos</div>
-            <div class="app-subtitle">hola estoy conectado a la db · PostgreSQL RDBMS</div>
+            <div class="app-subtitle">Sistema Integrado de Gestión de Horarios · PostgreSQL</div>
           </div>
         </div>
 
@@ -108,7 +108,7 @@ import { SeguridadModuleOrganismComponent } from '../../organisms/seguridad-modu
               [class.active]="sigh.activeModule() === 'programacion'"
               (click)="sigh.setModule('programacion')">
               <span class="material-icons">view_timeline</span>
-              <span>03. Programación (RF-12..18)</span>
+              <span>03. Programación (RF-12..17)</span>
             </button>
 
             <button
@@ -129,10 +129,17 @@ import { SeguridadModuleOrganismComponent } from '../../organisms/seguridad-modu
           </nav>
 
           <div class="drawer-footer">
-            <div class="db-pill">
-              <span class="dot-online"></span>
-              <span>PostgreSQL Activo</span>
-            </div>
+            @if (connectionController.echoData()?.databaseConnected) {
+              <div class="db-pill">
+                <span class="dot-online"></span>
+                <span>PostgreSQL activo</span>
+              </div>
+            } @else {
+              <div class="db-pill db-pill-off">
+                <span class="dot-offline"></span>
+                <span>Conexión sin verificar</span>
+              </div>
+            }
             <small>Arquitectura MVC + Atomic &amp; Material Design</small>
           </div>
         </aside>
@@ -148,11 +155,18 @@ import { SeguridadModuleOrganismComponent } from '../../organisms/seguridad-modu
           @if (sigh.activeModule() === 'inicio') {
             <div class="md-card hero-card">
               <div class="hero-left">
-                <span class="md-chip md-chip-success">
-                  <span class="material-icons" style="font-size: 16px">Storage</span>
-                  CONECTADO A POSTGRESQL (/api/echo)
-                </span>
-                <h1 class="hero-title">hola estoy conectado a la db</h1>
+                @if (connectionController.echoData()?.databaseConnected) {
+                  <span class="md-chip md-chip-success">
+                    <span class="material-icons" style="font-size: 16px">storage</span>
+                    CONECTADO A POSTGRESQL (/api/echo)
+                  </span>
+                } @else {
+                  <span class="md-chip md-chip-neutral">
+                    <span class="material-icons" style="font-size: 16px">storage</span>
+                    CONEXIÓN SIN VERIFICAR
+                  </span>
+                }
+                <h1 class="hero-title">Bienvenido al SIGH</h1>
                 <p class="hero-desc">
                   {{ connectionController.echoData()?.message || 'Conexión verificada exitosamente con el motor relacional PostgreSQL (esquema SIGH).' }}
                 </p>
@@ -254,7 +268,7 @@ import { SeguridadModuleOrganismComponent } from '../../organisms/seguridad-modu
                     </tr>
                     <tr>
                       <td><strong>03. Programación</strong></td>
-                      <td>RF-12 a RF-18</td>
+                      <td>RF-12 a RF-17</td>
                       <td>CU-04, CU-07, CU-08, CU-10</td>
                       <td>RN-01 a RN-17 (Cruces, Aforo, Contrato, Flujo Aval)</td>
                       <td><button class="md-btn md-btn-tonal md-btn-sm" (click)="sigh.setModule('programacion')">Abrir</button></td>
@@ -440,11 +454,20 @@ import { SeguridadModuleOrganismComponent } from '../../organisms/seguridad-modu
       font-weight: 600;
       color: #166534;
     }
+    .db-pill-off {
+      color: var(--md-text-secondary);
+    }
     .dot-online {
       width: 8px;
       height: 8px;
       border-radius: 50%;
       background: #22c55e;
+    }
+    .dot-offline {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #94a3b8;
     }
     .sigh-main {
       flex: 1;

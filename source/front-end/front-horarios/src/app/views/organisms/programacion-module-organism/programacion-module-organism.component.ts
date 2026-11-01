@@ -177,7 +177,7 @@ import { Franja, HorarioDetalle } from '../../../models/sigh.models';
 
           <div>
             <button class="md-btn md-btn-filled" [disabled]="!esEditable()" (click)="asignarSesion()">
-              <span class="material-icons">add_Task</span> RF-13 Asignar Sesión
+              <span class="material-icons">add_task</span> RF-13 Asignar Sesión
             </button>
           </div>
         </div>

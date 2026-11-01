@@ -6,7 +6,7 @@ import { Component } from '@angular/core';
   template: `
     <div class="layout">
       <header class="header">
-        <span class="brand">Proyecto DB - Horarios</span>
+        <span class="brand">SIGH — Sistema Integrado de Gestión de Horarios</span>
       </header>
       <main class="content">
         <ng-content></ng-content>
