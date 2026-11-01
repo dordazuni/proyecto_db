@@ -196,3 +196,138 @@ JOIN version_horario v   ON a.id_version = v.id_version
 JOIN periodo_academico p ON v.id_periodo = p.id_periodo
 WHERE e.codigo = 'LC-1'
   AND p.codigo = '2027-1';
+
+-- ---------------------------------------------------------------------
+-- Bloque 3: Operaciones de conjuntos y reuniones externas
+-- ---------------------------------------------------------------------
+
+-- Ejercicio 21. Todos los laboratorios
+-- Listar los códigos de todos los laboratorios, de cómputo o especializados.
+-- Álgebra: π ESPACIO.codigo (ESPACIO ⋈ ESPACIO.id_espacio = LABORATORIO_COMPUTO.id_espacio LABORATORIO_COMPUTO) ∪ π ESPACIO.codigo (ESPACIO ⋈ ESPACIO.id_espacio = LABORATORIO_ESPECIALIZADO.id_espacio LABORATORIO_ESPECIALIZADO)
+-- Resultado esperado: 3 filas
+SELECT e.codigo
+FROM espacio e
+JOIN laboratorio_computo lc ON e.id_espacio = lc.id_espacio
+UNION
+SELECT e.codigo
+FROM espacio e
+JOIN laboratorio_especializado le ON e.id_espacio = le.id_espacio;
+
+-- Ejercicio 22. Docentes habilitados para BD1 o para CAL1
+-- Listar los docentes habilitados para Bases de Datos 1 o para Cálculo Diferencial.
+-- Álgebra: π DOCENTE.nombres, DOCENTE.apellidos (σ CURSO.codigo = 'BD1' ((DOCENTE ⋈ DOCENTE.id_docente = DOCENTE_CURSO.id_docente DOCENTE_CURSO) ⋈ DOCENTE_CURSO.id_curso = CURSO.id_curso CURSO)) ∪ π DOCENTE.nombres, DOCENTE.apellidos (σ CURSO.codigo = 'CAL1' ((DOCENTE ⋈ DOCENTE.id_docente = DOCENTE_CURSO.id_docente DOCENTE_CURSO) ⋈ DOCENTE_CURSO.id_curso = CURSO.id_curso CURSO))
+-- Resultado esperado: 5 filas
+SELECT d.nombres, d.apellidos
+FROM docente d
+JOIN docente_curso dc ON d.id_docente = dc.id_docente
+JOIN curso c          ON dc.id_curso = c.id_curso
+WHERE c.codigo = 'BD1'
+UNION
+SELECT d.nombres, d.apellidos
+FROM docente d
+JOIN docente_curso dc ON d.id_docente = dc.id_docente
+JOIN curso c          ON dc.id_curso = c.id_curso
+WHERE c.codigo = 'CAL1';
+
+-- Ejercicio 23. Espacios sin recursos
+-- Listar los espacios que no ofrecen ningún recurso.
+-- Álgebra: π codigo (ESPACIO) − π ESPACIO.codigo (ESPACIO ⋈ ESPACIO.id_espacio = ESPACIO_RECURSO.id_espacio ESPACIO_RECURSO)
+-- Resultado esperado: 1 fila
+SELECT codigo
+FROM espacio
+EXCEPT
+SELECT e.codigo
+FROM espacio e
+JOIN espacio_recurso er ON e.id_espacio = er.id_espacio;
+
+-- Ejercicio 24. Docentes sin sesiones en 2026-2
+-- Listar los docentes que no dictaron ninguna sesión en el período 2026-2.
+-- Álgebra: π nombres, apellidos (DOCENTE) − π DOCENTE.nombres, DOCENTE.apellidos (σ PERIODO_ACADEMICO.codigo = '2026-2' (((DOCENTE ⋈ DOCENTE.id_docente = ASIGNACION.id_docente ASIGNACION) ⋈ ASIGNACION.id_version = VERSION_HORARIO.id_version VERSION_HORARIO) ⋈ VERSION_HORARIO.id_periodo = PERIODO_ACADEMICO.id_periodo PERIODO_ACADEMICO))
+-- Resultado esperado: 6 filas
+SELECT nombres, apellidos
+FROM docente
+EXCEPT
+SELECT d.nombres, d.apellidos
+FROM docente d
+JOIN asignacion a        ON d.id_docente = a.id_docente
+JOIN version_horario v   ON a.id_version = v.id_version
+JOIN periodo_academico p ON v.id_periodo = p.id_periodo
+WHERE p.codigo = '2026-2';
+
+-- Ejercicio 25. Docentes habilitados para CAL1 y FIS1
+-- Listar los docentes habilitados para Cálculo Diferencial y también para Física 1.
+-- Álgebra: π DOCENTE.nombres, DOCENTE.apellidos (σ CURSO.codigo = 'CAL1' ((DOCENTE ⋈ DOCENTE.id_docente = DOCENTE_CURSO.id_docente DOCENTE_CURSO) ⋈ DOCENTE_CURSO.id_curso = CURSO.id_curso CURSO)) ∩ π DOCENTE.nombres, DOCENTE.apellidos (σ CURSO.codigo = 'FIS1' ((DOCENTE ⋈ DOCENTE.id_docente = DOCENTE_CURSO.id_docente DOCENTE_CURSO) ⋈ DOCENTE_CURSO.id_curso = CURSO.id_curso CURSO))
+-- Resultado esperado: 2 filas
+SELECT d.nombres, d.apellidos
+FROM docente d
+JOIN docente_curso dc ON d.id_docente = dc.id_docente
+JOIN curso c          ON dc.id_curso = c.id_curso
+WHERE c.codigo = 'CAL1'
+INTERSECT
+SELECT d.nombres, d.apellidos
+FROM docente d
+JOIN docente_curso dc ON d.id_docente = dc.id_docente
+JOIN curso c          ON dc.id_curso = c.id_curso
+WHERE c.codigo = 'FIS1';
+
+-- Ejercicio 26. Franjas usadas en los dos períodos
+-- Listar las franjas (día y hora) usadas tanto en el horario de 2026-2 como en el de 2027-1.
+-- Álgebra: π FRANJA.dia_semana, FRANJA.hora_inicio (σ PERIODO_ACADEMICO.codigo = '2026-2' (((ASIGNACION ⋈ ASIGNACION.id_franja = FRANJA.id_franja FRANJA) ⋈ ASIGNACION.id_version = VERSION_HORARIO.id_version VERSION_HORARIO) ⋈ VERSION_HORARIO.id_periodo = PERIODO_ACADEMICO.id_periodo PERIODO_ACADEMICO)) ∩ π FRANJA.dia_semana, FRANJA.hora_inicio (σ PERIODO_ACADEMICO.codigo = '2027-1' (((ASIGNACION ⋈ ASIGNACION.id_franja = FRANJA.id_franja FRANJA) ⋈ ASIGNACION.id_version = VERSION_HORARIO.id_version VERSION_HORARIO) ⋈ VERSION_HORARIO.id_periodo = PERIODO_ACADEMICO.id_periodo PERIODO_ACADEMICO))
+-- Resultado esperado: 5 filas
+SELECT f.dia_semana, f.hora_inicio
+FROM asignacion a
+JOIN franja f            ON a.id_franja  = f.id_franja
+JOIN version_horario v   ON a.id_version = v.id_version
+JOIN periodo_academico p ON v.id_periodo = p.id_periodo
+WHERE p.codigo = '2026-2'
+INTERSECT
+SELECT f.dia_semana, f.hora_inicio
+FROM asignacion a
+JOIN franja f            ON a.id_franja  = f.id_franja
+JOIN version_horario v   ON a.id_version = v.id_version
+JOIN periodo_academico p ON v.id_periodo = p.id_periodo
+WHERE p.codigo = '2027-1';
+
+-- Ejercicio 27. Secciones con sus sesiones, incluidas las que no tienen
+-- Listar todas las secciones con sus sesiones asignadas, incluidas las que no tienen ninguna.
+-- Álgebra: π CURSO.codigo, SECCION.numero, ASIGNACION.id_asignacion ((ASIGNACION ⟖ ASIGNACION.id_seccion = SECCION.id_seccion SECCION) ⋈ SECCION.id_curso = CURSO.id_curso CURSO)
+-- Resultado esperado: 25 filas (la captura muestra las primeras; el total aparece en «All Rows Fetched: 25»)
+SELECT c.codigo, s.numero, a.id_asignacion
+FROM asignacion a
+RIGHT JOIN seccion s ON a.id_seccion = s.id_seccion
+JOIN curso c         ON s.id_curso   = c.id_curso
+ORDER BY a.id_asignacion NULLS FIRST;
+
+-- Ejercicio 28. Usuarios y docentes
+-- Relacionar los usuarios con los docentes, mostrando también los usuarios sin docente vinculado y los docentes sin usuario.
+-- Álgebra: π USUARIO.nombre_usuario, DOCENTE.nombres, DOCENTE.apellidos (USUARIO ⟗ USUARIO.id_docente = DOCENTE.id_docente DOCENTE)
+-- Resultado esperado: 12 filas
+SELECT u.nombre_usuario, d.nombres, d.apellidos
+FROM usuario u
+FULL JOIN docente d ON u.id_docente = d.id_docente
+ORDER BY u.nombre_usuario NULLS LAST, d.nombres;
+
+-- Ejercicio 29. Cursos sin recursos requeridos
+-- Listar los cursos que no requieren ningún recurso.
+-- Álgebra: π CURSO.codigo, CURSO.nombre (CURSO ▷ CURSO.id_curso = CURSO_RECURSO.id_curso CURSO_RECURSO)  ≡  π codigo, nombre (CURSO) − π CURSO.codigo, CURSO.nombre (CURSO ⋈ CURSO.id_curso = CURSO_RECURSO.id_curso CURSO_RECURSO)
+-- Resultado esperado: 1 fila
+SELECT c.codigo, c.nombre
+FROM curso c
+LEFT JOIN curso_recurso cr ON c.id_curso = cr.id_curso
+WHERE cr.id_curso IS NULL;
+
+-- Ejercicio 30. Secciones abiertas sin sesiones
+-- Listar las secciones abiertas de 2027-1 que todavía no tienen ninguna sesión programada.
+-- Álgebra: π CURSO.codigo, SECCION.numero (σ PERIODO_ACADEMICO.codigo = '2027-1' ∧ SECCION.estado = 'ABIERTA' ((SECCION ⋈ SECCION.id_curso = CURSO.id_curso CURSO) ⋈ SECCION.id_periodo = PERIODO_ACADEMICO.id_periodo PERIODO_ACADEMICO)) − π CURSO.codigo, SECCION.numero ((ASIGNACION ⋈ ASIGNACION.id_seccion = SECCION.id_seccion SECCION) ⋈ SECCION.id_curso = CURSO.id_curso CURSO)
+-- Resultado esperado: 1 fila
+SELECT c.codigo, s.numero
+FROM seccion s
+JOIN curso c             ON s.id_curso   = c.id_curso
+JOIN periodo_academico p ON s.id_periodo = p.id_periodo
+WHERE p.codigo = '2027-1'
+  AND s.estado = 'ABIERTA'
+EXCEPT
+SELECT c.codigo, s.numero
+FROM asignacion a
+JOIN seccion s ON a.id_seccion = s.id_seccion
+JOIN curso c   ON s.id_curso   = c.id_curso;
