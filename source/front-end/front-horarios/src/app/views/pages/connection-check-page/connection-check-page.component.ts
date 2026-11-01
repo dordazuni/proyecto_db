@@ -1,5 +1,4 @@
 import { Component, OnInit, inject } from '@angular/core';
-import { Router } from '@angular/router';
 import { ConnectionController } from '../../../controllers/connection.controller';
 import { MainLayoutTemplateComponent } from '../../templates/main-layout-template/main-layout-template.component';
 import { ConnectionCardOrganismComponent } from '../../organisms/connection-card-organism/connection-card-organism.component';
@@ -30,9 +29,6 @@ import { ConnectionCardOrganismComponent } from '../../organisms/connection-card
             buttonText="Reintentar conexión"
             (buttonClick)="retry()">
           </app-connection-card-organism>
-          <button type="button" class="md-btn md-btn-tonal" (click)="goToSigh()">
-            <span class="material-icons">dashboard</span> Continuar al Sistema SIGH
-          </button>
         }
       </div>
     </app-main-layout-template>
@@ -40,7 +36,6 @@ import { ConnectionCardOrganismComponent } from '../../organisms/connection-card
 })
 export class ConnectionCheckPageComponent implements OnInit {
   readonly controller = inject(ConnectionController);
-  private readonly router = inject(Router);
 
   ngOnInit(): void {
     this.controller.verifyAndRedirect();
@@ -48,9 +43,5 @@ export class ConnectionCheckPageComponent implements OnInit {
 
   retry(): void {
     this.controller.verifyAndRedirect();
-  }
-
-  goToSigh(): void {
-    this.router.navigate(['/bienvenida']);
   }
 }
