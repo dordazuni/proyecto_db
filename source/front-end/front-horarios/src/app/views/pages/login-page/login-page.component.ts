@@ -43,7 +43,7 @@ import { MainLayoutTemplateComponent } from '../../templates/main-layout-templat
                 name="nombreUsuario"
                 type="text"
                 class="md-input"
-                placeholder="Ej. admin, coordinador, aprobador, ana.rojas"
+                placeholder="Ingrese su nombre de usuario"
                 [(ngModel)]="nombreUsuario"
                 required
                 autocomplete="username" />
@@ -84,34 +84,6 @@ import { MainLayoutTemplateComponent } from '../../templates/main-layout-templat
           </button>
         </form>
 
-        <!-- Acceso rápido para cuentas de demostración (06_datos_prueba.sql) -->
-        <div class="demo-accounts-box">
-          <div class="demo-box-title">
-            <span class="material-icons">verified_user</span>
-            <span>Perfiles de Prueba en BD (<code>06_datos_prueba.sql</code> — clic para autocompletar):</span>
-          </div>
-          <div class="demo-grid">
-            <button type="button" class="demo-chip" (click)="seleccionarDemo('admin', '123456')">
-              <strong>admin</strong>
-              <span>ADMINISTRADOR</span>
-            </button>
-            <button type="button" class="demo-chip" (click)="seleccionarDemo('coordinador', '123456')">
-              <strong>coordinador</strong>
-              <span>COORDINADOR</span>
-            </button>
-            <button type="button" class="demo-chip" (click)="seleccionarDemo('aprobador', '123456')">
-              <strong>aprobador</strong>
-              <span>APROBADOR</span>
-            </button>
-            <button type="button" class="demo-chip" (click)="seleccionarDemo('ana.rojas', '123456')">
-              <strong>ana.rojas</strong>
-              <span>DOCENTE</span>
-            </button>
-          </div>
-          <small class="demo-hint">
-            Contraseña predeterminada para usuarios semilla: <code>123456</code> (o el mismo nombre de usuario).
-          </small>
-        </div>
       </div>
     </app-main-layout-template>
   `,
@@ -211,62 +183,6 @@ import { MainLayoutTemplateComponent } from '../../templates/main-layout-templat
       font-size: 0.95rem;
       margin-top: 4px;
     }
-    .demo-accounts-box {
-      margin-top: 22px;
-      padding: 14px;
-      border-radius: 12px;
-      background: #f8fafc;
-      border: 1px solid var(--md-outline-light);
-    }
-    .demo-box-title {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 0.78rem;
-      font-weight: 600;
-      color: var(--md-text-secondary);
-      margin-bottom: 10px;
-    }
-    .demo-box-title .material-icons {
-      font-size: 16px;
-      color: var(--md-primary);
-    }
-    .demo-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 8px;
-      margin-bottom: 8px;
-    }
-    .demo-chip {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-      padding: 8px 10px;
-      border-radius: 8px;
-      border: 1px solid #cbd5e1;
-      background: #ffffff;
-      cursor: pointer;
-      transition: all 0.15s ease;
-      text-align: left;
-    }
-    .demo-chip:hover {
-      border-color: var(--md-primary);
-      background: var(--md-primary-container);
-    }
-    .demo-chip strong {
-      font-size: 0.82rem;
-      color: var(--md-text-primary);
-    }
-    .demo-chip span {
-      font-size: 0.68rem;
-      color: var(--md-primary);
-      font-weight: 600;
-    }
-    .demo-hint {
-      display: block;
-      font-size: 0.74rem;
-      color: var(--md-text-secondary);
-    }
   `]
 })
 export class LoginPageComponent {
@@ -279,12 +195,6 @@ export class LoginPageComponent {
   readonly loading = signal<boolean>(false);
   readonly errorMessage = signal<string | null>(null);
   readonly mostrarPassword = signal<boolean>(false);
-
-  seleccionarDemo(usuario: string, pass: string): void {
-    this.nombreUsuario = usuario;
-    this.contrasena = pass;
-    this.errorMessage.set(null);
-  }
 
   iniciarSesion(): void {
     if (!this.nombreUsuario.trim() || !this.contrasena.trim()) {
@@ -304,6 +214,8 @@ export class LoginPageComponent {
         next: (res) => {
           this.loading.set(false);
           if (res.token && res.usuario) {
+            // Estado limpio para el usuario que acaba de entrar (nada del anterior).
+            this.sigh.resetState();
             this.sigh.showSuccess(
               'Bienvenido a SIGH',
               `Sesión iniciada como ${res.usuario.nombreUsuario} (${res.usuario.nombreRol})`
@@ -316,8 +228,9 @@ export class LoginPageComponent {
         error: (err) => {
           this.loading.set(false);
           const backendMsg =
-            err?.error?.message ||
-            'RF-23: Credenciales inválidas o usuario inactivo.';
+            err?.status === 0
+              ? 'No hay conexión con el servidor. Revisa tu conexión a internet o que la máquina virtual esté encendida.'
+              : err?.error?.message || 'RF-23: Credenciales inválidas o usuario inactivo.';
           this.errorMessage.set(backendMsg);
         }
       });

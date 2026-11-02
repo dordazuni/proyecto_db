@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, effect, inject, signal, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SighController } from '../../../controllers/sigh.controller';
@@ -38,14 +38,42 @@ import { TimetableGridOrganismComponent } from '../timetable-grid-organism/timet
             <h3 class="md-card-title"><span class="material-icons">filter_alt</span> RF-19 | Consulta de Horario (Vista v_horario)</h3>
             <p class="md-card-subtitle">
               @if (sigh.isDocente()) {
-                Consultando automáticamente el horario asignado a su perfil docente.
+                Tu horario en la versión publicada (avalada o sincronizada) del período seleccionado.
               } @else {
                 Filtra por versión, docente, espacio físico o sección académica.
               }
             </p>
           </div>
         </div>
+        @if (sigh.isDocente()) {
+          <div style="margin-bottom: 16px">
+            @if (!sigh.activeUser()?.idDocente) {
+              <span class="md-chip md-chip-error">
+                <span class="material-icons" style="font-size: 15px">link_off</span>
+                Tu usuario no está vinculado a un docente (S-09). Pide al Administrador que lo vincule.
+              </span>
+            } @else if (sigh.versionPublicadaDocente(); as vp) {
+              <span class="md-chip md-chip-success">
+                <span class="material-icons" style="font-size: 15px">verified</span>
+                {{ sigh.selectedPeriodo()?.codigo }} — versión v{{ vp.numeroVersion }} ({{ vp.estado }})
+              </span>
+            } @else {
+              <span class="md-chip md-chip-warning">
+                <span class="material-icons" style="font-size: 15px">schedule</span>
+                El período {{ sigh.selectedPeriodo()?.codigo }} aún no tiene un horario avalado ni sincronizado.
+              </span>
+            }
+          </div>
+        }
         @if (!sigh.isDocente()) {
+          @if (sigh.versiones().length === 0) {
+            <div style="margin-bottom: 16px">
+              <span class="md-chip md-chip-warning">
+                <span class="material-icons" style="font-size: 15px">info</span>
+                El período {{ sigh.selectedPeriodo()?.codigo }} no tiene versiones de horario: no hay nada que reportar todavía.
+              </span>
+            </div>
+          }
           <div class="md-form-grid" style="margin-bottom: 16px">
             <div class="md-field">
               <label>Versión de Horario</label>
@@ -154,7 +182,7 @@ import { TimetableGridOrganismComponent } from '../timetable-grid-organism/timet
               <option value="">— Todos los estados —</option>
               <option value="BAJO_MINIMO">BAJO_MINIMO (RN-22)</option>
               <option value="EN_RANGO">EN_RANGO</option>
-              <option value="EN_LIMITE">EN_LIMITE</option>
+              <option value="SOBRE_MAXIMO">SOBRE_MAXIMO (RN-05)</option>
             </select>
           </div>
         </div>
@@ -172,7 +200,7 @@ import { TimetableGridOrganismComponent } from '../timetable-grid-organism/timet
               </tr>
             </thead>
             <tbody>
-              @for (c of sigh.reporteCargaDocente(); track c.idDocente) {
+              @for (c of sigh.reporteCargaDocente(); track c.idVersion + '-' + c.idDocente) {
                 <tr>
                   <td>#{{ c.idDocente }}</td>
                   <td><strong>{{ c.docente }}</strong></td>
@@ -186,7 +214,7 @@ import { TimetableGridOrganismComponent } from '../timetable-grid-organism/timet
                       [ngClass]="
                         c.estadoCarga === 'BAJO_MINIMO'
                           ? 'md-chip-warning'
-                          : c.estadoCarga === 'SOBRECARGA'
+                          : c.estadoCarga === 'SOBRE_MAXIMO'
                             ? 'md-chip-error'
                             : 'md-chip-success'
                       ">
@@ -364,14 +392,34 @@ export class ReportesModuleOrganismComponent {
 
   filtroEstadoCarga = '';
 
+  constructor() {
+    // Al cambiar de período o de versión, los reportes se recargan sin filtros;
+    // se limpian también los selectores para que lo que se ve coincida con los datos.
+    effect(() => {
+      this.sigh.selectedPeriodoId();
+      this.sigh.selectedVersionId();
+      untracked(() => this.reiniciarFiltros());
+    });
+  }
+
+  private reiniciarFiltros(): void {
+    this.filtroHorario = { idDocente: null, idEspacio: null, idSeccion: null };
+    this.filtroEstadoCarga = '';
+  }
+
   cambiarVersionReporte(idVersion: number): void {
     this.sigh.seleccionarVersion(Number(idVersion));
     this.sigh.cargarTodosLosReportes();
   }
 
   aplicarFiltroHorario(): void {
+    const idVersion = this.sigh.selectedVersionId();
+    if (!idVersion) {
+      this.sigh.reporteHorario.set([]);
+      return;
+    }
     this.sigh.consultarHorarioReporte({
-      idVersion: this.sigh.selectedVersionId(),
+      idVersion,
       idDocente: this.filtroHorario.idDocente,
       idEspacio: this.filtroHorario.idEspacio,
       idSeccion: this.filtroHorario.idSeccion

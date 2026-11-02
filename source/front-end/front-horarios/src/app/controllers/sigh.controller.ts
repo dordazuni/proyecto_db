@@ -1,4 +1,5 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
+import { Observable, catchError, forkJoin, of } from 'rxjs';
 import { SighApiService } from '../services/sigh-api.service';
 import { EchoService } from '../services/echo.service';
 import {
@@ -35,6 +36,17 @@ export type SighModuleTab =
   | 'programacion'
   | 'reportes'
   | 'seguridad';
+
+/** Mensajes de los cruces que la base impide con UNIQUE en ASIGNACION (uq_asig_rn01..03). */
+const CRUCES: Record<string, string> = {
+  'RN-01': 'El docente ya tiene otra sesión en esa franja de esta versión.',
+  'RN-02': 'El espacio ya está ocupado en esa franja de esta versión.',
+  'RN-03': 'La sección ya tiene otra sesión en esa franja de esta versión.'
+};
+
+const MODULOS_VALIDOS: SighModuleTab[] = ['inicio', 'catalogos', 'planeacion', 'programacion', 'reportes', 'seguridad'];
+const UI_MODULO_KEY = 'sigh_ui_modulo';
+const UI_PERIODO_KEY = 'sigh_ui_periodo';
 
 export interface SighAlert {
   type: 'success' | 'error' | 'warning';
@@ -87,6 +99,8 @@ export class SighController {
   readonly reporteRiesgoCierre = signal<SeccionRiesgoCierre[]>([]);
   readonly reporteSesionesFaltantes = signal<SeccionSesionesFaltantes[]>([]);
   readonly reporteDiasConsecutivos = signal<SesionDiasConsecutivos[]>([]);
+  /** Versión publicada que está viendo el docente (null = el período no tiene horario publicado). */
+  readonly versionPublicadaDocente = signal<{ idVersion: number; numeroVersion: number; estado: string } | null>(null);
 
   // 05. Seguridad y Auditoría (RF-23 a RF-25)
   readonly roles = signal<Rol[]>([]);
@@ -96,8 +110,9 @@ export class SighController {
   // Propiedades computadas de sesión y permisos por rol (RF-25 / RNF-04 / 05_roles_permisos.sql)
   readonly activeUser = computed(() => this.api.authenticatedUser());
 
+  /** Rol del usuario en sesión. Sin sesión no hay rol (cadena vacía): ningún permiso queda activo por defecto. */
   readonly userRole = computed(() =>
-    (this.api.authenticatedUser()?.nombreRol ?? 'ADMINISTRADOR').toUpperCase()
+    (this.api.authenticatedUser()?.nombreRol ?? '').toUpperCase()
   );
 
   readonly isAdmin = computed(() => this.userRole() === 'ADMINISTRADOR');
@@ -108,7 +123,7 @@ export class SighController {
   readonly canViewCatalogos = computed(() => this.isAdmin() || this.isCoordinador());
   readonly canViewPlaneacion = computed(() => this.isAdmin() || this.isCoordinador() || this.isDocente());
   readonly canViewProgramacion = computed(() => this.isAdmin() || this.isCoordinador() || this.isAprobador());
-  readonly canViewReportes = computed(() => true);
+  readonly canViewReportes = computed(() => this.isAdmin() || this.isCoordinador() || this.isAprobador() || this.isDocente());
   readonly canViewSeguridad = computed(() => this.isAdmin());
 
   readonly selectedPeriodo = computed(() => {
@@ -121,10 +136,115 @@ export class SighController {
     return this.versiones().find((v) => v.idVersion === vid) ?? null;
   });
 
+  // =========================================================================
+  // SESIÓN: limpieza de estado y vista conservada al recargar (F5)
+  // =========================================================================
+
+  /**
+   * Deja el controlador como recién creado. Se llama al iniciar y al cerrar sesión,
+   * para que ningún dato de un usuario (o rol) quede visible para el siguiente.
+   */
+  resetState(): void {
+    this.activeModule.set('inicio');
+    this.loading.set(false);
+    this.alert.set(null);
+
+    this.periodos.set([]);
+    this.selectedPeriodoId.set(null);
+    this.tiposContrato.set([]);
+    this.docentes.set([]);
+    this.espacios.set([]);
+    this.recursos.set([]);
+    this.espacioRecursos.set([]);
+    this.cursos.set([]);
+    this.cursoRecursos.set([]);
+    this.docenteCursos.set([]);
+    this.franjas.set([]);
+    this.parametros.set([]);
+
+    this.secciones.set([]);
+    this.disponibilidades.set([]);
+
+    this.versiones.set([]);
+    this.selectedVersionId.set(null);
+    this.asignaciones.set([]);
+    this.horarioGrilla.set([]);
+
+    this.reporteHorario.set([]);
+    this.reporteCargaDocente.set([]);
+    this.reporteRiesgoCierre.set([]);
+    this.reporteSesionesFaltantes.set([]);
+    this.reporteDiasConsecutivos.set([]);
+    this.versionPublicadaDocente.set(null);
+
+    this.roles.set([]);
+    this.usuarios.set([]);
+    this.auditoria.set([]);
+
+    this.borrarVistaGuardada();
+  }
+
+  /** Cierra la sesión en el backend y en el navegador, y borra todo el estado en memoria. */
+  cerrarSesion(): void {
+    this.api.logout();
+    this.resetState();
+  }
+
+  /** Indica si el rol en sesión puede abrir un módulo (mismas reglas del menú lateral). */
+  puedeVerModulo(tab: SighModuleTab): boolean {
+    switch (tab) {
+      case 'inicio':
+        return this.api.isAuthenticated();
+      case 'catalogos':
+        return this.canViewCatalogos();
+      case 'planeacion':
+        return this.canViewPlaneacion();
+      case 'programacion':
+        return this.canViewProgramacion();
+      case 'reportes':
+        return this.canViewReportes();
+      case 'seguridad':
+        return this.canViewSeguridad();
+      default:
+        return false;
+    }
+  }
+
+  // La vista (módulo y período) se guarda en sessionStorage: sobrevive a F5 en la
+  // misma pestaña, se borra al cerrar sesión y no se comparte con otras pestañas.
+  private guardarVista(clave: string, valor: string): void {
+    try {
+      sessionStorage.setItem(clave, valor);
+    } catch {
+      // almacenamiento no disponible: la vista simplemente no se conserva
+    }
+  }
+
+  private leerVista(clave: string): string | null {
+    try {
+      return sessionStorage.getItem(clave);
+    } catch {
+      return null;
+    }
+  }
+
+  private borrarVistaGuardada(): void {
+    try {
+      sessionStorage.removeItem(UI_MODULO_KEY);
+      sessionStorage.removeItem(UI_PERIODO_KEY);
+    } catch {
+      // ignorar
+    }
+  }
+
+  private leerModuloGuardado(): SighModuleTab | null {
+    const valor = this.leerVista(UI_MODULO_KEY) as SighModuleTab | null;
+    return valor && MODULOS_VALIDOS.includes(valor) ? valor : null;
+  }
+
   // Inicialización de datos maestros filtrada según permisos del rol activo en BD
   initializeDashboard(): void {
     this.loading.set(true);
-    this.clearAlert();
     this.activeModule.set('inicio');
     this.echoService.checkEcho().subscribe({
       error: () => {}
@@ -137,21 +257,14 @@ export class SighController {
   }
 
   setModule(tab: SighModuleTab): void {
-    if (tab === 'catalogos' && !this.canViewCatalogos()) return;
-    if (tab === 'planeacion' && !this.canViewPlaneacion()) return;
-    if (tab === 'programacion' && !this.canViewProgramacion()) return;
-    if (tab === 'seguridad' && !this.canViewSeguridad()) return;
+    if (!this.puedeVerModulo(tab)) return;
 
     this.activeModule.set(tab);
+    this.guardarVista(UI_MODULO_KEY, tab);
     this.clearAlert();
     if (tab === 'planeacion') {
-      if (this.isDocente()) {
-        const idDoc = this.api.authenticatedUser()?.idDocente;
-        const pid = this.selectedPeriodoId() || 1;
-        if (idDoc) {
-          this.cargarDisponibilidad(idDoc, pid);
-        }
-      } else {
+      // La disponibilidad la carga el propio módulo de Planeación (docente y período visibles).
+      if (!this.isDocente()) {
         this.cargarSecciones(this.selectedPeriodoId());
       }
     } else if (tab === 'programacion') {
@@ -171,25 +284,92 @@ export class SighController {
     this.alert.set({ type: 'success', title, message });
   }
 
+  /** Aviso amarillo para validaciones del formulario (no se envió nada a la base). */
+  showWarning(title: string, message: string): void {
+    this.alert.set({ type: 'warning', title, message });
+  }
+
+  /** Pide confirmación antes de una acción que no se puede deshacer desde la aplicación. */
+  confirmar(mensaje: string): boolean {
+    try {
+      return window.confirm(mensaje);
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Convierte el error del backend en un aviso legible. El backend devuelve
+   * { status, regla, message, sqlState } (GlobalExceptionHandler); el mensaje de
+   * PostgreSQL puede traer líneas técnicas (Where, Position...) que no sirven al usuario.
+   */
   handleApiError(err: any, fallbackTitle = 'Operación rechazada por la Base de Datos'): void {
     this.loading.set(false);
+    const status: number = typeof err?.status === 'number' ? err.status : -1;
     const apiErr: Partial<ApiErrorResponse> = err?.error && typeof err.error === 'object' ? err.error : {};
-    const rawMsg = (
-      apiErr.message ||
-      (typeof err?.error === 'string' ? err.error : null) ||
-      err?.message ||
-      'Error al procesar la solicitud en el servidor.'
-    ).replace(/^ERROR:\s*/i, '');
-    const regla = apiErr.regla && apiErr.regla !== 'N/A' ? apiErr.regla : undefined;
     const sqlState = apiErr.sqlState || undefined;
+    let regla = apiErr.regla && apiErr.regla !== 'N/A' ? apiErr.regla : undefined;
+
+    let message: string;
+    if (status === 0) {
+      message = 'No hay conexión con el servidor. Revisa tu conexión a internet o que la máquina virtual esté encendida.';
+    } else if (status === 401) {
+      message = 'Tu sesión ya no es válida. Vuelve a iniciar sesión.';
+    } else if (status === 403 || sqlState === '42501') {
+      regla = regla ?? 'RF-25';
+      message = 'Tu rol no tiene permiso para hacer esta operación.';
+    } else if (sqlState === '23505' && regla && CRUCES[regla]) {
+      // RN-01 a RN-03 se cumplen con UNIQUE en ASIGNACION: el mensaje técnico se traduce.
+      message = CRUCES[regla];
+    } else if (sqlState === '23505') {
+      const llave = this.extraerLlaveDuplicada(apiErr.message);
+      message = llave
+        ? `Ya existe un registro con ${llave}. Usa un valor diferente.`
+        : 'Ya existe un registro con esos mismos datos. Usa un valor diferente.';
+    } else if (sqlState === '23503') {
+      message = 'La operación hace referencia a un registro que no existe o que todavía está en uso.';
+    } else {
+      const raw =
+        apiErr.message ||
+        (typeof err?.error === 'string' ? err.error : null) ||
+        (status >= 500 ? 'Error interno del servidor. Intenta de nuevo; si persiste, avisa al equipo de backend.' : null) ||
+        err?.message ||
+        'Error al procesar la solicitud en el servidor.';
+      message = this.limpiarMensajeBd(raw, regla);
+    }
 
     this.alert.set({
       type: 'error',
       title: regla ? `${fallbackTitle} [${regla}]` : fallbackTitle,
-      message: rawMsg,
+      message,
       regla,
       sqlState
     });
+  }
+
+  /** Deja solo la parte útil del mensaje de PostgreSQL. */
+  private limpiarMensajeBd(raw: string, regla?: string): string {
+    const lineas = String(raw)
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0)
+      // Líneas técnicas que no ayudan al usuario (inglés y español).
+      .filter((l) => !/^(Where|Dónde|Donde|En|Position|Posición|Context|Contexto|Internal Query|Routine|File|Line)\s*:/i.test(l));
+    let texto = lineas
+      .map((l) => l.replace(/^(ERROR|Detail|Detalle|Hint|Sugerencia)\s*:\s*/i, ''))
+      .join(' — ');
+    // Si el título ya muestra el código de la regla, no se repite al inicio del mensaje.
+    if (regla) {
+      texto = texto.replace(new RegExp('^' + regla.replace('-', '\\-') + '\\s*:\\s*', 'i'), '');
+    }
+    texto = texto.trim();
+    return texto ? texto.charAt(0).toUpperCase() + texto.slice(1) : 'Error al procesar la solicitud en el servidor.';
+  }
+
+  /** De "Key (codigo)=(BD1) already exists" / "Ya existe la llave (codigo)=(BD1)" saca "codigo = BD1". */
+  private extraerLlaveDuplicada(raw?: string): string | null {
+    const m = /\(([^)]+)\)=\(([^)]*)\)/.exec(raw ?? '');
+    return m ? `${m[1]} = ${m[2]}` : null;
   }
 
   // =========================================================================
@@ -197,49 +377,70 @@ export class SighController {
   // =========================================================================
 
   cargarCatalogosBase(): void {
-    this.api.listarPeriodos().subscribe({
-      next: (list) => {
-        this.periodos.set(list);
+    const puedeVerCatalogos = this.isAdmin() || this.isCoordinador();
+    // Cada lista falla por separado (lista vacía) sin tumbar las demás.
+    const lista = <T>(obs: Observable<T[]>): Observable<T[]> => obs.pipe(catchError(() => of([] as T[])));
+    const vacia = <T>(): Observable<T[]> => of([] as T[]);
+
+    // Se espera a que lleguen TODOS los catálogos antes de restaurar la vista y elegir
+    // el período: así, tras F5, el módulo restaurado ya encuentra sus listas cargadas.
+    forkJoin({
+      periodos: this.api.listarPeriodos(),
+      cursos: lista(this.api.listarCursos()),
+      franjas: lista(this.api.listarFranjas()),
+      tiposContrato: puedeVerCatalogos ? lista(this.api.listarTiposContrato()) : vacia<TipoContrato>(),
+      docentes: puedeVerCatalogos ? lista(this.api.listarDocentes()) : vacia<Docente>(),
+      espacios: puedeVerCatalogos ? lista(this.api.listarEspacios()) : vacia<Espacio>(),
+      recursos: puedeVerCatalogos ? lista(this.api.listarRecursos()) : vacia<Recurso>(),
+      parametros: puedeVerCatalogos ? lista(this.api.listarParametros()) : vacia<ParametroSistema>()
+    }).subscribe({
+      next: (d) => {
+        this.periodos.set(d.periodos);
+        this.cursos.set(d.cursos);
+        this.franjas.set(d.franjas);
+        this.tiposContrato.set(d.tiposContrato);
+        this.docentes.set(d.docentes);
+        this.espacios.set(d.espacios);
+        this.recursos.set(d.recursos);
+        this.parametros.set(d.parametros);
+
+        // F5: se restaura el módulo ANTES de seleccionar el período, para que la carga
+        // del período (secciones, versiones, reportes) alimente el módulo restaurado.
+        const moduloGuardado = this.leerModuloGuardado();
+        if (moduloGuardado && this.puedeVerModulo(moduloGuardado)) {
+          this.activeModule.set(moduloGuardado);
+        }
+
+        const list = d.periodos;
         if (!this.selectedPeriodoId() && list.length > 0) {
-          const activo = list.find((p) => p.estado === 'ACTIVO' || p.estado === 'PLANEACION') ?? list[0];
+          const idGuardado = Number(this.leerVista(UI_PERIODO_KEY));
+          const guardado = list.find((p) => p.idPeriodo === idGuardado);
+          const activo = guardado ?? list.find((p) => p.estado === 'ACTIVO' || p.estado === 'PLANEACION') ?? list[0];
           this.seleccionarPeriodo(activo.idPeriodo!);
         }
         this.loading.set(false);
       },
       error: (err) => this.handleApiError(err, 'Error al cargar períodos')
     });
-
-    this.api.listarCursos().subscribe({ next: (d) => this.cursos.set(d), error: () => {} });
-    this.api.listarFranjas().subscribe({ next: (d) => this.franjas.set(d), error: () => {} });
-
-    if (this.isAdmin() || this.isCoordinador()) {
-      this.api.listarTiposContrato().subscribe({ next: (d) => this.tiposContrato.set(d), error: () => {} });
-      this.api.listarDocentes().subscribe({ next: (d) => this.docentes.set(d), error: () => {} });
-      this.api.listarEspacios().subscribe({ next: (d) => this.espacios.set(d), error: () => {} });
-      this.api.listarRecursos().subscribe({ next: (d) => this.recursos.set(d), error: () => {} });
-      this.api.listarParametros().subscribe({ next: (d) => this.parametros.set(d), error: () => {} });
-    }
   }
 
   seleccionarPeriodo(idPeriodo: number): void {
     this.selectedPeriodoId.set(Number(idPeriodo));
+    this.guardarVista(UI_PERIODO_KEY, String(idPeriodo));
     if (this.isAdmin() || this.isCoordinador()) {
       this.cargarSecciones(Number(idPeriodo));
     }
     if (this.isAdmin() || this.isCoordinador() || this.isAprobador()) {
       this.cargarVersiones(Number(idPeriodo));
     } else if (this.isDocente()) {
-      const idDoc = this.api.authenticatedUser()?.idDocente;
-      if (idDoc) {
-        this.cargarDisponibilidad(idDoc, Number(idPeriodo));
-      }
-      this.consultarHorarioReporte({ idPeriodo: Number(idPeriodo), idDocente: idDoc ?? null });
+      this.cargarHorarioDocente(Number(idPeriodo));
     }
   }
 
-  crearPeriodo(periodo: PeriodoAcademico): void {
+  crearPeriodo(periodo: PeriodoAcademico, onSuccess?: () => void): void {
     this.api.crearPeriodo(periodo).subscribe({
       next: (creado) => {
+        onSuccess?.();
         this.showSuccess('RF-01 | Período creado', `Período ${creado.codigo} (${creado.estado}) registrado.`);
         this.api.listarPeriodos().subscribe((l) => this.periodos.set(l));
       },
@@ -257,9 +458,10 @@ export class SighController {
     });
   }
 
-  crearRecurso(recurso: Recurso): void {
+  crearRecurso(recurso: Recurso, onSuccess?: () => void): void {
     this.api.crearRecurso(recurso).subscribe({
       next: (r) => {
+        onSuccess?.();
         this.showSuccess('RF-04 | Recurso creado', `Recurso "${r.nombre}" (${r.categoria}) agregado al catálogo.`);
         this.api.listarRecursos().subscribe((l) => this.recursos.set(l));
       },
@@ -294,9 +496,10 @@ export class SighController {
     });
   }
 
-  crearCurso(curso: Curso): void {
+  crearCurso(curso: Curso, onSuccess?: () => void): void {
     this.api.crearCurso(curso).subscribe({
       next: (c) => {
+        onSuccess?.();
         this.showSuccess('RF-05 | Curso creado', `Curso ${c.codigo} - ${c.nombre} registrado.`);
         this.api.listarCursos().subscribe((l) => this.cursos.set(l));
       },
@@ -368,9 +571,10 @@ export class SighController {
     });
   }
 
-  actualizarParametro(clave: string, valor: number, descripcion: string): void {
+  actualizarParametro(clave: string, valor: number, descripcion: string, onSuccess?: () => void): void {
     this.api.actualizarParametro(clave, { clave, valor, descripcion }).subscribe({
       next: (p) => {
+        onSuccess?.();
         this.showSuccess('RF-08 | Parámetro actualizado', `Parámetro ${p.clave} actualizado a ${p.valor} (RNF-07).`);
         this.api.listarParametros().subscribe((l) => this.parametros.set(l));
       },
@@ -390,9 +594,10 @@ export class SighController {
     });
   }
 
-  crearSeccion(seccion: Seccion): void {
+  crearSeccion(seccion: Seccion, onSuccess?: () => void): void {
     this.api.crearSeccion(seccion).subscribe({
       next: (s) => {
+        onSuccess?.();
         this.showSuccess(
           'RF-09 | Sección abierta',
           `Sección #${s.numero} creada con cupo máx ${s.cupoMax} y proyectada ${s.matriculaProyectada}.`
@@ -418,6 +623,9 @@ export class SighController {
   }
 
   cerrarSeccion(idSeccion: number): void {
+    const s = this.secciones().find((x) => x.idSeccion === idSeccion);
+    const nombre = s ? `${s.codigoCurso ?? ''} sección ${s.numero}` : `#${idSeccion}`;
+    if (!this.confirmar(`¿Cerrar la ${nombre}? Una sección cerrada no se puede reabrir desde la aplicación (RF-10).`)) return;
     this.api.cerrarSeccion(idSeccion).subscribe({
       next: (s) => {
         this.showSuccess('RF-10 | Sección cerrada', `La sección #${s.numero} ha pasado a estado CERRADA (RN-11).`);
@@ -428,18 +636,10 @@ export class SighController {
     });
   }
 
-  reabrirSeccion(idSeccion: number): void {
-    this.api.cambiarEstadoSeccion(idSeccion, 'ABIERTA').subscribe({
-      next: (s) => {
-        this.showSuccess('RF-10 | Sección reabierta', `La sección #${s.numero} está nuevamente ABIERTA.`);
-        this.cargarSecciones(this.selectedPeriodoId());
-      },
-      error: (err) => this.handleApiError(err, 'No se pudo reabrir la sección')
-    });
-  }
-
   cargarDisponibilidad(idDocente: number, idPeriodo: number): void {
     if (!this.isCoordinador() && !this.isDocente()) return;
+    // Se vacía antes de pedir, para no mostrar ni un instante la del docente o período anterior.
+    this.disponibilidades.set([]);
     this.api.listarDisponibilidad(idDocente, idPeriodo).subscribe({
       next: (l) => this.disponibilidades.set(l),
       error: (err) => this.handleApiError(err, 'Error al consultar disponibilidad del docente (RF-11)')
@@ -495,6 +695,11 @@ export class SighController {
           this.selectedVersionId.set(null);
           this.asignaciones.set([]);
           this.horarioGrilla.set([]);
+        }
+        // Si el usuario está en Reportes (por ejemplo, tras F5 o al cambiar de período),
+        // los reportes se recargan con la versión recién seleccionada.
+        if (this.activeModule() === 'reportes') {
+          this.cargarTodosLosReportes();
         }
       },
       error: (err) => this.handleApiError(err, 'Error al cargar versiones de horario (RF-12)')
@@ -578,7 +783,7 @@ export class SighController {
       next: () => {
         this.showSuccess(
           'RF-13 | Sesión asignada en Base de Datos',
-          'La sesión superó todas las reglas duras (RN-01 a RN-16) y quedó registrada en la bitácora (RF-24).'
+          'La sesión cumplió las reglas duras (RN-01 a RN-09, RN-11 a RN-16) y quedó registrada en la bitácora (RF-24).'
         );
         this.cargarAsignacionesYGrilla(asignacion.idVersion);
         this.cargarTodosLosReportes();
@@ -593,7 +798,7 @@ export class SighController {
       next: () => {
         this.showSuccess(
           'RF-14 | Sesión actualizada',
-          'El cambio de franja/espacio/docente cumplió las reglas del dominio (RN-01 a RN-16).'
+          'El cambio de franja, espacio o docente cumplió las reglas duras (RN-01 a RN-09, RN-11 a RN-16).'
         );
         if (vid) this.cargarAsignacionesYGrilla(vid);
         this.cargarTodosLosReportes();
@@ -603,6 +808,9 @@ export class SighController {
   }
 
   eliminarAsignacion(idAsignacion: number): void {
+    const h = this.horarioGrilla().find((x) => x.idAsignacion === idAsignacion);
+    const detalle = h ? `${h.codigoCurso} Sec. ${h.numeroSeccion} — ${h.nombreDia} ${h.horaInicio}` : `#${idAsignacion}`;
+    if (!this.confirmar(`¿Eliminar la sesión ${detalle}? Esta acción queda registrada en la bitácora.`)) return;
     const vid = this.selectedVersionId();
     this.api.eliminarAsignacion(idAsignacion).subscribe({
       next: () => {
@@ -623,12 +831,24 @@ export class SighController {
     const codigoPeriodo = this.selectedPeriodo()?.codigo;
 
     if (this.isDocente()) {
-      const idDoc = this.api.authenticatedUser()?.idDocente ?? null;
-      this.consultarHorarioReporte({
-        idVersion,
-        idPeriodo: this.selectedPeriodoId(),
-        idDocente: idDoc
-      });
+      const pid = this.selectedPeriodoId();
+      if (pid) this.cargarHorarioDocente(pid);
+      return;
+    }
+
+    // Sin versión seleccionada no hay nada que reportar: si se consultara con idVersion
+    // nulo, el backend devolvería las filas de TODAS las versiones mezcladas.
+    if (!idVersion) {
+      this.reporteHorario.set([]);
+      this.reporteCargaDocente.set([]);
+      this.reporteSesionesFaltantes.set([]);
+      this.reporteDiasConsecutivos.set([]);
+      if (this.isAdmin() || this.isCoordinador()) {
+        this.api.consultarSeccionesRiesgoCierre(codigoPeriodo).subscribe({
+          next: (d) => this.reporteRiesgoCierre.set(d),
+          error: () => {}
+        });
+      }
       return;
     }
 
@@ -653,6 +873,36 @@ export class SighController {
     });
   }
 
+  /**
+   * Horario del docente en sesión para un período: se muestra SOLO la última versión
+   * AVALADA o SINCRONIZADA (la publicada). Si el período no tiene ninguna, la lista
+   * queda vacía y versionPublicadaDocente queda en null (la vista muestra un aviso).
+   * El rol docente no puede leer version_horario; por eso la versión se deduce de
+   * v_horario, que sí trae id, número y estado de la versión en cada fila.
+   */
+  cargarHorarioDocente(idPeriodo: number): void {
+    const idDoc = this.api.authenticatedUser()?.idDocente ?? null;
+    this.reporteHorario.set([]);
+    this.versionPublicadaDocente.set(null);
+    if (!idDoc) return;
+
+    this.api.consultarHorario({ idPeriodo }).subscribe({
+      next: (filas) => {
+        if (this.selectedPeriodoId() !== idPeriodo) return; // llegó tarde: el usuario ya cambió de período
+        const publicadas = filas.filter((f) => f.estadoVersion === 'AVALADO' || f.estadoVersion === 'SINCRONIZADO');
+        if (publicadas.length === 0) return;
+        const ultima = publicadas.reduce((a, b) => (b.numeroVersion > a.numeroVersion ? b : a));
+        this.versionPublicadaDocente.set({
+          idVersion: ultima.idVersion,
+          numeroVersion: ultima.numeroVersion,
+          estado: ultima.estadoVersion
+        });
+        this.reporteHorario.set(publicadas.filter((f) => f.idVersion === ultima.idVersion && f.idDocente === idDoc));
+      },
+      error: (err) => this.handleApiError(err, 'Error al consultar tu horario (RF-19)')
+    });
+  }
+
   consultarHorarioReporte(filtros: {
     idVersion?: number | null;
     idDocente?: number | null;
@@ -667,6 +917,10 @@ export class SighController {
   }
 
   filtrarCargaDocente(idVersion?: number | null, idDocente?: number | null, estadoCarga?: string | null): void {
+    if (!idVersion) {
+      this.reporteCargaDocente.set([]);
+      return;
+    }
     this.api.consultarCargaDocente(idVersion, idDocente, estadoCarga).subscribe({
       next: (d) => this.reporteCargaDocente.set(d),
       error: (err) => this.handleApiError(err, 'Error al consultar carga docente (RF-20)')
@@ -684,9 +938,10 @@ export class SighController {
     this.filtrarAuditoria({});
   }
 
-  crearUsuario(usuario: Usuario): void {
+  crearUsuario(usuario: Usuario, onSuccess?: () => void): void {
     this.api.crearUsuario(usuario).subscribe({
       next: (u) => {
+        onSuccess?.();
         this.showSuccess('RF-23 | Usuario registrado', `Usuario "${u.nombreUsuario}" creado exitosamente.`);
         this.api.listarUsuarios().subscribe((l) => this.usuarios.set(l));
       },

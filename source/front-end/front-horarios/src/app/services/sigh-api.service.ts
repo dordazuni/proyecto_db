@@ -1,6 +1,6 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
-import { Observable, tap } from 'rxjs';
+import { Observable, finalize, shareReplay, tap, throwError } from 'rxjs';
 import { API_CONFIG } from '../config/api.config';
 import {
   Asignacion,
@@ -86,18 +86,34 @@ export class SighApiService {
     }
   }
 
+  /** Renovación en curso; se comparte para que varias peticiones con 401 no disparen varias renovaciones. */
+  private refreshEnCurso$: Observable<LoginResponse> | null = null;
+
+  /**
+   * Renueva la sesión usando SOLO el token actual (cabecera Authorization).
+   * No se envían datos del usuario en el cuerpo: la identidad y el rol deben
+   * salir del token verificado por el backend, nunca de lo que diga el navegador.
+   */
   refreshToken(): Observable<LoginResponse> {
-    return this.http
-      .post<LoginResponse>(`${this.baseUrl}/auth/refresh`, {}, {
-        headers: this.getHeaders()
-      })
-      .pipe(
-        tap((res: LoginResponse) => {
-          if (res?.token && res?.usuario) {
-            this.setSession(res.token, res.usuario);
-          }
-        })
-      );
+    if (!this.authToken()) {
+      return throwError(() => new Error('No hay sesión que renovar.'));
+    }
+    if (!this.refreshEnCurso$) {
+      this.refreshEnCurso$ = this.http
+        .post<LoginResponse>(`${this.baseUrl}/auth/refresh`, {}, { headers: this.getHeaders() })
+        .pipe(
+          tap((res: LoginResponse) => {
+            if (res?.token && res?.usuario) {
+              this.setSession(res.token, res.usuario);
+            }
+          }),
+          finalize(() => {
+            this.refreshEnCurso$ = null;
+          }),
+          shareReplay({ bufferSize: 1, refCount: false })
+        );
+    }
+    return this.refreshEnCurso$;
   }
 
   setSessionUser(usuario: Usuario): void {
@@ -110,11 +126,14 @@ export class SighApiService {
   }
 
   logout(): void {
-    const headers = this.getHeaders();
-    this.http.post(`${this.baseUrl}/auth/logout`, {}, { headers }).subscribe({
-      next: () => {},
-      error: () => {}
-    });
+    if (this.authToken()) {
+      const headers = this.getHeaders();
+      this.http.post(`${this.baseUrl}/auth/logout`, {}, { headers }).subscribe({
+        next: () => {},
+        error: () => {}
+      });
+    }
+    this.refreshEnCurso$ = null;
     this.authToken.set(null);
     this.authenticatedUser.set(null);
     try {

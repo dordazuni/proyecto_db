@@ -300,7 +300,7 @@ import { SeguridadModuleOrganismComponent } from '../../organisms/seguridad-modu
                         <td><strong>03. Programación</strong></td>
                         <td>RF-12 a RF-17</td>
                         <td>
-                          {{ sigh.isCoordinador() ? 'Crear versión, asignar/mover/eliminar sesiones y enviar a aprobación (CU-07)' : sigh.isAprobador() ? 'Avalar versión o devolver a edición (RF-16 / CU-08)' : 'Sincronizar versión avalada con repositorio documental (RF-17 / CU-04)' }}
+                          {{ sigh.isCoordinador() ? 'Crear versión, asignar/mover/eliminar sesiones y enviar a aprobación (CU-07)' : sigh.isAprobador() ? 'Avalar versión o devolver a edición (RF-16 / CU-10)' : 'Sincronizar versión avalada con repositorio documental (RF-17 / CU-04)' }}
                         </td>
                         <td><button class="md-btn md-btn-tonal md-btn-sm" (click)="sigh.setModule('programacion')">Abrir</button></td>
                       </tr>
@@ -309,7 +309,7 @@ import { SeguridadModuleOrganismComponent } from '../../organisms/seguridad-modu
                       <td><strong>04. Consultas y Reportes</strong></td>
                       <td>{{ sigh.isDocente() ? 'RF-19' : 'RF-19 a RF-22' }}</td>
                       <td>
-                        {{ sigh.isDocente() ? 'Consulta de horario académico publicado (v_horario)' : 'Consulta de horarios, carga docente vs contrato y alertas de programación (CU-11)' }}
+                        {{ sigh.isDocente() ? 'Consulta de tu horario en la versión publicada (RF-19 / CU-11)' : 'Consulta de horarios, carga docente vs contrato y alertas de programación (CU-11)' }}
                       </td>
                       <td><button class="md-btn md-btn-tonal md-btn-sm" (click)="sigh.setModule('reportes')">Abrir</button></td>
                     </tr>
@@ -585,7 +585,7 @@ export class WelcomePageComponent implements OnInit {
   }
 
   cerrarSesion(): void {
-    this.sigh.api.logout();
+    this.sigh.cerrarSesion();
     this.router.navigate(['/login']);
   }
 }
