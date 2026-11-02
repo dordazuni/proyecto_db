@@ -37,6 +37,13 @@ export type SighModuleTab =
   | 'reportes'
   | 'seguridad';
 
+/** Mensajes de los cruces que la base impide con UNIQUE en ASIGNACION (uq_asig_rn01..03). */
+const CRUCES: Record<string, string> = {
+  'RN-01': 'El docente ya tiene otra sesión en esa franja de esta versión.',
+  'RN-02': 'El espacio ya está ocupado en esa franja de esta versión.',
+  'RN-03': 'La sección ya tiene otra sesión en esa franja de esta versión.'
+};
+
 const MODULOS_VALIDOS: SighModuleTab[] = ['inicio', 'catalogos', 'planeacion', 'programacion', 'reportes', 'seguridad'];
 const UI_MODULO_KEY = 'sigh_ui_modulo';
 const UI_PERIODO_KEY = 'sigh_ui_periodo';
@@ -291,25 +298,78 @@ export class SighController {
     }
   }
 
+  /**
+   * Convierte el error del backend en un aviso legible. El backend devuelve
+   * { status, regla, message, sqlState } (GlobalExceptionHandler); el mensaje de
+   * PostgreSQL puede traer líneas técnicas (Where, Position...) que no sirven al usuario.
+   */
   handleApiError(err: any, fallbackTitle = 'Operación rechazada por la Base de Datos'): void {
     this.loading.set(false);
+    const status: number = typeof err?.status === 'number' ? err.status : -1;
     const apiErr: Partial<ApiErrorResponse> = err?.error && typeof err.error === 'object' ? err.error : {};
-    const rawMsg = (
-      apiErr.message ||
-      (typeof err?.error === 'string' ? err.error : null) ||
-      err?.message ||
-      'Error al procesar la solicitud en el servidor.'
-    ).replace(/^ERROR:\s*/i, '');
-    const regla = apiErr.regla && apiErr.regla !== 'N/A' ? apiErr.regla : undefined;
     const sqlState = apiErr.sqlState || undefined;
+    let regla = apiErr.regla && apiErr.regla !== 'N/A' ? apiErr.regla : undefined;
+
+    let message: string;
+    if (status === 0) {
+      message = 'No hay conexión con el servidor. Revisa tu conexión a internet o que la máquina virtual esté encendida.';
+    } else if (status === 401) {
+      message = 'Tu sesión ya no es válida. Vuelve a iniciar sesión.';
+    } else if (status === 403 || sqlState === '42501') {
+      regla = regla ?? 'RF-25';
+      message = 'Tu rol no tiene permiso para hacer esta operación.';
+    } else if (sqlState === '23505' && regla && CRUCES[regla]) {
+      // RN-01 a RN-03 se cumplen con UNIQUE en ASIGNACION: el mensaje técnico se traduce.
+      message = CRUCES[regla];
+    } else if (sqlState === '23505') {
+      const llave = this.extraerLlaveDuplicada(apiErr.message);
+      message = llave
+        ? `Ya existe un registro con ${llave}. Usa un valor diferente.`
+        : 'Ya existe un registro con esos mismos datos. Usa un valor diferente.';
+    } else if (sqlState === '23503') {
+      message = 'La operación hace referencia a un registro que no existe o que todavía está en uso.';
+    } else {
+      const raw =
+        apiErr.message ||
+        (typeof err?.error === 'string' ? err.error : null) ||
+        (status >= 500 ? 'Error interno del servidor. Intenta de nuevo; si persiste, avisa al equipo de backend.' : null) ||
+        err?.message ||
+        'Error al procesar la solicitud en el servidor.';
+      message = this.limpiarMensajeBd(raw, regla);
+    }
 
     this.alert.set({
       type: 'error',
       title: regla ? `${fallbackTitle} [${regla}]` : fallbackTitle,
-      message: rawMsg,
+      message,
       regla,
       sqlState
     });
+  }
+
+  /** Deja solo la parte útil del mensaje de PostgreSQL. */
+  private limpiarMensajeBd(raw: string, regla?: string): string {
+    const lineas = String(raw)
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0)
+      // Líneas técnicas que no ayudan al usuario (inglés y español).
+      .filter((l) => !/^(Where|Dónde|Donde|En|Position|Posición|Context|Contexto|Internal Query|Routine|File|Line)\s*:/i.test(l));
+    let texto = lineas
+      .map((l) => l.replace(/^(ERROR|Detail|Detalle|Hint|Sugerencia)\s*:\s*/i, ''))
+      .join(' — ');
+    // Si el título ya muestra el código de la regla, no se repite al inicio del mensaje.
+    if (regla) {
+      texto = texto.replace(new RegExp('^' + regla.replace('-', '\\-') + '\\s*:\\s*', 'i'), '');
+    }
+    texto = texto.trim();
+    return texto ? texto.charAt(0).toUpperCase() + texto.slice(1) : 'Error al procesar la solicitud en el servidor.';
+  }
+
+  /** De "Key (codigo)=(BD1) already exists" / "Ya existe la llave (codigo)=(BD1)" saca "codigo = BD1". */
+  private extraerLlaveDuplicada(raw?: string): string | null {
+    const m = /\(([^)]+)\)=\(([^)]*)\)/.exec(raw ?? '');
+    return m ? `${m[1]} = ${m[2]}` : null;
   }
 
   // =========================================================================
@@ -723,7 +783,7 @@ export class SighController {
       next: () => {
         this.showSuccess(
           'RF-13 | Sesión asignada en Base de Datos',
-          'La sesión superó todas las reglas duras (RN-01 a RN-16) y quedó registrada en la bitácora (RF-24).'
+          'La sesión cumplió las reglas duras (RN-01 a RN-09, RN-11 a RN-16) y quedó registrada en la bitácora (RF-24).'
         );
         this.cargarAsignacionesYGrilla(asignacion.idVersion);
         this.cargarTodosLosReportes();
@@ -738,7 +798,7 @@ export class SighController {
       next: () => {
         this.showSuccess(
           'RF-14 | Sesión actualizada',
-          'El cambio de franja/espacio/docente cumplió las reglas del dominio (RN-01 a RN-16).'
+          'El cambio de franja, espacio o docente cumplió las reglas duras (RN-01 a RN-09, RN-11 a RN-16).'
         );
         if (vid) this.cargarAsignacionesYGrilla(vid);
         this.cargarTodosLosReportes();

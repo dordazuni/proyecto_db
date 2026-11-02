@@ -117,7 +117,7 @@ import { Franja, HorarioDetalle } from '../../../models/sigh.models';
                 RF-13 & RF-14 | Asignar Sesión en Versión v{{ ver.numeroVersion }} ({{ ver.estado }})
               </h3>
               <p class="md-card-subtitle">
-                Cada asignación se guarda al instante y pasa por las 19 reglas duras en la base de datos (RN-01 a RN-16: cruces, aforo, horas contrato, habilitación, recursos, disponibilidad).
+                Cada asignación se guarda al instante y la base de datos valida las reglas duras RN-01 a RN-09 y RN-11 a RN-16 (cruces, aforo, horas de contrato, habilitación, recursos, disponibilidad y estado de la versión).
               </p>
             </div>
             @if (!esEditable()) {
@@ -168,7 +168,7 @@ import { Franja, HorarioDetalle } from '../../../models/sigh.models';
             </div>
 
             <div class="md-field">
-              <label>Franja Horaria 2h (Valida RN-03, RN-06, RN-07)</label>
+              <label>Franja Horaria 2h (Valida RN-03, RN-06 a RN-08)</label>
               <select class="md-select" [(ngModel)]="formAsignacion.idFranja">
                 <option [ngValue]="null" disabled>— Seleccione una franja —</option>
                 @for (f of sigh.franjas(); track f.idFranja) {

@@ -36,6 +36,8 @@ La administración de la base de datos se realiza de forma segura mediante túne
 | [`docs/gestion/`](docs/gestion/) | Documentos de gestión, modelos MER, relacional, normalización, requisitos y análisis |
 | [`docs/virtual-machine/`](docs/virtual-machine/) | Manual de implementación y despliegue de VMs y RDBMS en AWS |
 | [`docs/api/`](docs/api/) | Colección de Postman de la API REST |
+| [`docs/MANUAL_PRUEBAS_WEB.md`](docs/MANUAL_PRUEBAS_WEB.md) | Manual de pruebas de la interfaz web por rol |
+| [`docs/GUIA_PRUEBAS_SIGH.md`](docs/GUIA_PRUEBAS_SIGH.md) | Guía de pruebas de la API y de las 22 reglas de negocio |
 | [`source/db/`](source/db/) | Scripts SQL de la base de datos (01 a 07) y su README de ejecución |
 | [`source/back-end/`](source/back-end/) | API REST en Spring Boot (código fuente y documentación) |
 | [`source/front-end/`](source/front-end/) | Interfaz web SPA en Angular (código fuente y documentación) |
@@ -44,7 +46,7 @@ La administración de la base de datos se realiza de forma segura mediante túne
 
 ## Cómo Ejecutar
 
-**Requisitos:** PostgreSQL 16 o 18, Java 17 LTS, Node.js v18+ o v20+ con npm y Angular CLI 21.
+**Requisitos:** PostgreSQL 16 o 18, Java 17 LTS, Node.js `^20.19`, `^22.12` o `>=24` con npm (Angular 21).
 
 1. **Base de datos:** Ejecutar los scripts de [`source/db/`](source/db/README.MD) en el orden estipulado:
    ```bash
@@ -63,7 +65,7 @@ La administración de la base de datos se realiza de forma segura mediante túne
    *(En Windows: `.\gradlew.bat bootRun`). La API queda disponible en `http://localhost:8080/api`.*
 3. **Interfaz web:** En [`source/front-end/front-horarios/`](source/front-end/README.MD), instalar dependencias y ejecutar:
    ```bash
-   npm install
+   npm ci
    npm start
    ```
    *La interfaz queda disponible en `http://localhost:4200`.*
@@ -79,15 +81,15 @@ La administración de la base de datos se realiza de forma segura mediante túne
 | **Acta de constitución** | [`docs/gestion/F0_Acta_de_Constitucion_SIGH.docx`](docs/gestion/F0_Acta_de_Constitucion_SIGH.docx) | Completo |
 | **EDT / WBS** | [`docs/gestion/F0_EDT_SIGH.docx`](docs/gestion/F0_EDT_SIGH.docx) | Completo |
 | **Cronograma** | [`docs/gestion/F0_Cronograma_SIGH.docx`](docs/gestion/F0_Cronograma_SIGH.docx) | Completo |
-| **Propuesta del proyecto** | [`docs/gestion/SIGH - Propuesta del proyecto.pdf`](docs/gestion/SIGH%20-%20Propuesta%20del%20proyecto.pdf) | Completo |
-| **Documento de supuestos** | [`docs/gestion/SIGH - Documento de supuestos.pdf`](docs/gestion/SIGH%20-%20Documento%20de%20supuestos.pdf) | Completo |
-| **Requisitos y reglas de negocio** | [`docs/gestion/SIGH - Requisitos y reglas de negocio.pdf`](docs/gestion/SIGH%20-%20Requisitos%20y%20reglas%20de%20negocio.pdf) | Completo |
-| **MER en notación de Chen** | [`docs/gestion/SIGH - MER en notación de Chen.pdf`](docs/gestion/SIGH%20-%20MER%20en%20notación%20de%20Chen.pdf) | Completo |
-| **MER extendido** | [`docs/gestion/SIGH - MER extendido.pdf`](docs/gestion/SIGH%20-%20MER%20extendido.pdf) | Completo |
-| **MER en Crow's Foot** | [`docs/gestion/SIGH - MER en Crow's Foot.pdf`](docs/gestion/SIGH%20-%20MER%20en%20Crow's%20Foot.pdf) | Completo |
-| **Modelo relacional** | [`docs/gestion/SIGH - Modelo relacional.pdf`](docs/gestion/SIGH%20-%20Modelo%20relacional.pdf) | Completo |
-| **Normalización (1FN, 2FN, 3FN)** | [`docs/gestion/SIGH - Normalización.pdf`](docs/gestion/SIGH%20-%20Normalización.pdf) | Completo |
-| **Diccionario de datos** | [`docs/gestion/SIGH - Diccionario de datos.pdf`](docs/gestion/SIGH%20-%20Diccionario%20de%20datos.pdf) | Completo |
+| **Propuesta del proyecto** | [`docs/gestion/SIGH — Propuesta del proyecto.pdf`](docs/gestion/SIGH%20%E2%80%94%20Propuesta%20del%20proyecto.pdf) | Completo |
+| **Documento de supuestos** | [`docs/gestion/SIGH — Documento de supuestos.pdf`](docs/gestion/SIGH%20%E2%80%94%20Documento%20de%20supuestos.pdf) | Completo |
+| **Requisitos y reglas de negocio** | [`docs/gestion/SIGH — Requisitos y reglas de negocio.pdf`](docs/gestion/SIGH%20%E2%80%94%20Requisitos%20y%20reglas%20de%20negocio.pdf) | Completo |
+| **MER en notación de Chen** | [`docs/gestion/SIGH — MER en notación de Chen.pdf`](docs/gestion/SIGH%20%E2%80%94%20MER%20en%20notación%20de%20Chen.pdf) | Completo |
+| **MER extendido** | [`docs/gestion/SIGH — MER extendido.pdf`](docs/gestion/SIGH%20%E2%80%94%20MER%20extendido.pdf) | Completo |
+| **MER en Crow's Foot** | [`docs/gestion/SIGH — MER en Crow's Foot.pdf`](docs/gestion/SIGH%20%E2%80%94%20MER%20en%20Crow's%20Foot.pdf) | Completo |
+| **Modelo relacional** | [`docs/gestion/SIGH — Modelo relacional.pdf`](docs/gestion/SIGH%20%E2%80%94%20Modelo%20relacional.pdf) | Completo |
+| **Normalización (1FN, 2FN, 3FN)** | [`docs/gestion/SIGH — Normalización.pdf`](docs/gestion/SIGH%20%E2%80%94%20Normalización.pdf) | Completo |
+| **Diccionario de datos** | [`docs/gestion/SIGH — Diccionario de datos.pdf`](docs/gestion/SIGH%20%E2%80%94%20Diccionario%20de%20datos.pdf) | Completo |
 | **Análisis de selección del SO** | [`docs/gestion/SIGH - Analisis de seleccion del SO.pdf`](docs/gestion/SIGH%20-%20Analisis%20de%20seleccion%20del%20SO.pdf) | Completo |
 | **Análisis de selección del RDBMS** | [`docs/gestion/SIGH - Analisis de seleccion del RDBMS.pdf`](docs/gestion/SIGH%20-%20Analisis%20de%20seleccion%20del%20RDBMS.pdf) | Completo |
 | **Despliegue e implementación de VM y RDBMS** | [`docs/virtual-machine/README.md`](docs/virtual-machine/README.md) | Completo |

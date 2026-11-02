@@ -1,40 +1,33 @@
 # SIGH — Frontend Web (Angular 21)
 
-Interfaz de usuario web desarrollada en **Angular 21** para el Sistema Integrado de Gestión de Horarios (SIGH). Proporciona una experiencia interactiva para la programación académica, visualización en grilla horaria, control de versiones, alertas de conflictos en tiempo real y conmutación de roles de usuario.
+Interfaz web en **Angular 21** del Sistema Integrado de Gestión de Horarios (SIGH). Cada rol ve solo sus módulos; la base de datos valida las reglas de negocio y la interfaz muestra sus rechazos con el código de la regla.
 
 ---
 
 ## 1. Stack Tecnológico
 
-* **Framework:** Angular 21.2.0 (arquitectura basada en Standalone Components y Signals).
+* **Framework:** Angular 21.2 (componentes standalone y Signals), con enrutamiento hash (`/#/`).
 * **Lenguaje:** TypeScript 5.9.
-* **Manejo de Estado y Asincronía:** RxJS 7.8 y Angular Signals.
-* **Cliente HTTP:** Angular `HttpClient` con interceptores para inyección de cabeceras de usuario (`X-Usuario-Id`).
-* **Estilos:** CSS3 modular y diseño responsivo optimizado para grillas de horarios.
-* **Servidor Web de Producción:** Nginx en Ubuntu Server (AWS EC2).
+* **Estado y asincronía:** Angular Signals y RxJS 7.8. El estado vive en `SighController` y se borra completo al iniciar y al cerrar sesión.
+* **Cliente HTTP:** `HttpClient` con el token de sesión en la cabecera `Authorization: Bearer <token>`. Un interceptor guarda el token renovado que llega en `X-Renewed-Token` y, ante un `401`, intenta renovar la sesión con `POST /api/auth/refresh` (solo con el token, sin datos del usuario); si no puede, cierra la sesión y vuelve al login.
+* **Sesión:** el token y el usuario se guardan en `localStorage`; el módulo y el período en pantalla se guardan por pestaña en `sessionStorage`, para que `F5` conserve la vista. El `authGuard` valida el token con `GET /api/auth/me`.
+* **Diseño:** Atomic Design (átomos, moléculas, organismos, plantillas y páginas) con clases CSS planas y tokens `--md-*`.
+* **Servidor de producción:** Nginx en Ubuntu Server (AWS EC2).
 
 ---
 
 ## 2. Módulos Funcionales
 
-La aplicación está organizada en 5 módulos principales accesibles desde la barra de navegación:
+| Módulo | Roles | Qué permite |
+|---|---|---|
+| **00. Inicio** | Todos | Resumen del rol, indicadores y accesos directos |
+| **01. Catálogos** | Administrador, Coordinador | Administrador: períodos, recursos, dotación de espacios y parámetros (CU-01). Coordinador: cursos, recursos requeridos y habilitación docente (CU-05). Docentes y espacios son de solo lectura (`RN-19`) |
+| **02. Planeación** | Administrador, Coordinador, Docente | Coordinador: secciones, sobrecupo justificado y cierre (CU-06). Administrador y Coordinador: matrícula real (`RF-10`). Docente: su propia disponibilidad (CU-09); el Coordinador la consulta |
+| **03. Programación** | Administrador, Coordinador, Aprobador | Versiones `EN_EDICION → PENDIENTE → AVALADO → SINCRONIZADO`. Coordinador: crear versión, asignar, mover (arrastrar y soltar) y eliminar sesiones, y enviar a aprobación (CU-07). Aprobador: avalar o devolver (CU-10). Administrador: sincronizar con el repositorio documental (CU-04) |
+| **04. Reportes** | Todos | Horario por docente, espacio y sección; carga docente frente al contrato; secciones en riesgo de cierre; sesiones faltantes y días consecutivos (CU-11). El docente ve solo su horario en la última versión avalada o sincronizada |
+| **05. Seguridad** | Administrador | Usuarios con un rol cada uno y vínculo con su docente solo para el rol Docente (`S-09`); bitácora de auditoría de solo lectura (`RF-24`, `RN-18`) |
 
-1. **Catálogos:**
-   * Mantenimiento y consulta de docentes, cursos, espacios físicos (aulas/laboratorios), franjas horarias y recursos.
-2. **Planeación Académica:**
-   * Control de disponibilidad horaria de docentes, asignación de cursos habilitados, límites de contratación y detección de secciones con sesiones faltantes.
-3. **Programación y Grilla de Horarios:**
-   * Grilla horaria interactiva (Lunes a Sábado, bloques de 2 horas).
-   * Asignación y reasignación de espacios y docentes.
-   * Visualización inmediata de rechazos de la base de datos (con traducción amigable del código de regla infringido: `RN-01`, `RN-04`, `RN-07`, etc.).
-   * Ciclo de vida de versiones de horario: `EN_EDICION` $\to$ `AVALADO` $\to$ `SINCRONIZADO`.
-4. **Reportes:**
-   * Horario consolidado por programa y período.
-   * Matriz de ocupación física de espacios.
-   * Reporte de secciones en riesgo de cierre por baja matrícula/sesiones.
-5. **Seguridad y Auditoría:**
-   * Consulta de la bitácora inmutable de transacciones registradas por los triggers de la base de datos.
-   * Selector rápido de usuario activo (`Administrador`, `Coordinador`, `Aprobador`, `Docente`) para verificar el comportamiento de permisos y roles en tiempo real durante la sustentación.
+La grilla muestra lunes a sábado en bloques de 2 horas, con la zona muerta de 12:00 a 13:00 solo de lunes a viernes (`RN-06`).
 
 ---
 
@@ -46,6 +39,7 @@ La configuración de conexión reside en:
 ```typescript
 export const environment = {
   production: true,
+  // En producción se usa ruta relativa '/api' a través del proxy inverso Nginx (puerto 80).
   apiBaseUrl: '/api',
   echoUrl: '/api/echo'
 };
@@ -64,23 +58,23 @@ export const environment = {
 ## 4. Instalación y Ejecución
 
 ### Prerrequisitos
-* Node.js v18.x o v20.x LTS.
-* Gestor de paquetes npm (v9+ o v11+).
+* Node.js `^20.19`, `^22.12` o `>=24` (lo exige Angular 21).
+* npm 8 o superior.
 
 ### Pasos para Desarrollo Local
 1. Ingresar al directorio del proyecto:
    ```bash
    cd source/front-end/front-horarios
    ```
-2. Instalar dependencias:
+2. Instalar exactamente las dependencias de `package-lock.json`:
    ```bash
-   npm install
+   npm ci
    ```
 3. Iniciar servidor de desarrollo local:
    ```bash
    npm start
    ```
-   *La aplicación estará disponible en `http://localhost:4200`.*
+   *La aplicación estará disponible en `http://localhost:4200`. El servidor de desarrollo reenvía `/api` a Nginx en la VM de AWS (`proxy.conf.json`), así que no hace falta abrir el puerto 8080.*
 
 ---
 

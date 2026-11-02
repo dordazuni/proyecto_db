@@ -228,8 +228,9 @@ export class LoginPageComponent {
         error: (err) => {
           this.loading.set(false);
           const backendMsg =
-            err?.error?.message ||
-            'RF-23: Credenciales inválidas o usuario inactivo.';
+            err?.status === 0
+              ? 'No hay conexión con el servidor. Revisa tu conexión a internet o que la máquina virtual esté encendida.'
+              : err?.error?.message || 'RF-23: Credenciales inválidas o usuario inactivo.';
           this.errorMessage.set(backendMsg);
         }
       });
