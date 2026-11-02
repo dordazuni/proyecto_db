@@ -77,6 +77,39 @@ class SeguridadAuthUnitTests {
     }
 
     @Test
+    void permitirRenovarTokenVencidoDentroDeVentanaDeGracia() {
+        AuthTokenService tokenService = new AuthTokenService(TEST_SECRET);
+
+        Usuario admin = new Usuario(1, "admin", null, true, 1, "ADMINISTRADOR", null, null);
+
+        // Generar un token con expiración hace 5 minutos (-300 segundos, dentro de los 30 min de gracia)
+        String recentExpiredToken = tokenService.generateToken(admin, -300L);
+        assertTrue(tokenService.isTokenExpired(recentExpiredToken));
+
+        // Debe fallar en requests normales
+        assertThrows(UnauthorizedException.class, () -> tokenService.verifyToken(recentExpiredToken));
+
+        // Pero debe ser aceptado para /auth/refresh
+        Usuario verificado = tokenService.verifyTokenForRefresh(recentExpiredToken);
+        assertEquals(1, verificado.getIdUsuario());
+        assertEquals("admin", verificado.getNombreUsuario());
+    }
+
+    @Test
+    void rechazarTokenVencidoHaceMuchoEnRefresh() {
+        AuthTokenService tokenService = new AuthTokenService(TEST_SECRET);
+
+        Usuario admin = new Usuario(1, "admin", null, true, 1, "ADMINISTRADOR", null, null);
+
+        // Generar un token vencido hace 2 horas (-7200 segundos, supera los 30 min de gracia)
+        String oldExpiredToken = tokenService.generateToken(admin, -7200L);
+
+        UnauthorizedException ex = assertThrows(UnauthorizedException.class,
+                () -> tokenService.verifyTokenForRefresh(oldExpiredToken));
+        assertTrue(ex.getMessage().contains("demasiado tiempo"), "Debe rechazar tokens vencidos hace mucho tiempo");
+    }
+
+    @Test
     void sesionesActivasNoExponenToken() {
         UserSessionRegistry registry = new UserSessionRegistry();
         Usuario admin = new Usuario(1, "admin", null, true, 1, "ADMINISTRADOR", null, null);

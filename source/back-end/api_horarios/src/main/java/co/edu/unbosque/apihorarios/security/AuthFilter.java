@@ -65,10 +65,17 @@ public class AuthFilter extends OncePerRequestFilter {
             return;
         }
 
+        boolean isRefresh = "POST".equalsIgnoreCase(request.getMethod())
+                && (path.equals("/auth/refresh") || path.endsWith("/api/auth/refresh"));
+
         String token = authHeader.substring(7).trim();
         try {
-            // RNF-04: Verifica la firma y vigencia del token. Tokens expirados son rechazados con 401.
-            Usuario usuario = authTokenService.verifyToken(token);
+            // RNF-04: /auth/refresh admite tokens vigentes o recientemente vencidos (gracia de 30 min).
+            // Todos los demás endpoints rechazan estrictamente tokens expirados con 401.
+            Usuario usuario = isRefresh
+                    ? authTokenService.verifyTokenForRefresh(token)
+                    : authTokenService.verifyToken(token);
+
             sessionRegistry.updateAccessTime(usuario.getIdUsuario(), token);
             AuthContextHolder.setCurrentUser(usuario);
             filterChain.doFilter(request, response);

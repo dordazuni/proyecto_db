@@ -87,9 +87,8 @@ export class SighApiService {
   }
 
   refreshToken(): Observable<LoginResponse> {
-    const currentUser = this.authenticatedUser();
     return this.http
-      .post<LoginResponse>(`${this.baseUrl}/auth/refresh`, currentUser ?? {}, {
+      .post<LoginResponse>(`${this.baseUrl}/auth/refresh`, {}, {
         headers: this.getHeaders()
       })
       .pipe(

@@ -94,6 +94,9 @@ La administración de la base de datos se realiza de forma segura mediante túne
 | **Scripts de base de datos (01 a 07) + README** | [`source/db/`](source/db/) | Completo |
 | **API REST conectada a la base de datos** | [`source/back-end/`](source/back-end/) | Completo |
 | **Frontend web conectado a la API** | [`source/front-end/`](source/front-end/) | Completo |
-| **Álgebra relacional (50 ejercicios)** | `docs/gestion/` | Pendiente (Daniel) |
-| **Interesados, presupuesto y acta de cierre** | `docs/gestion/` | Pendiente (Daniel) |
-| **Presentación y Video de demostración (15 min)** | Enlace en README / Anexo | Pendiente (Los tres) |
+| **Modelos nativos Data Modeler** | [`docs/Data Modeler Final.zip`](docs/Data%20Modeler%20Final.zip) | Completo |
+| **Álgebra relacional (50 ejercicios)** | [`docs/gestion/F1_Algebra_Relacional_SIGH.docx`](docs/gestion/F1_Algebra_Relacional_SIGH.docx) / [`SQL`](docs/gestion/F1_Algebra_Relacional_SIGH.sql) | Completo |
+| **Interesados y Presupuesto** | Incluidos en [`docs/gestion/F0_Acta_de_Constitucion_SIGH.docx`](docs/gestion/F0_Acta_de_Constitucion_SIGH.docx) | Completo |
+| **Plan y Manuales de Pruebas** | [`docs/gestion/F11_Plan_de_Pruebas_SIGH.docx`](docs/gestion/F11_Plan_de_Pruebas_SIGH.docx) y [`docs/MANUAL_PRUEBAS_WEB.md`](docs/MANUAL_PRUEBAS_WEB.md) | Completo |
+| **Acta de cierre** | [`docs/gestion/F0_Acta_de_Cierre_SIGH.docx`](docs/gestion/F0_Acta_de_Cierre_SIGH.docx) / [`PDF`](docs/gestion/F0_Acta_de_Cierre_SIGH.pdf) | Completo |
+| **Presentación y Video de sustentación (15 min)** | Enlace pendiente de grabación (2 de noviembre) | En proceso (Los tres) |

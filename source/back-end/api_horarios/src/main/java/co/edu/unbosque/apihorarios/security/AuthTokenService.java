@@ -1,6 +1,7 @@
 package co.edu.unbosque.apihorarios.security;
 
 import co.edu.unbosque.apihorarios.model.Usuario;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -18,12 +19,14 @@ public class AuthTokenService {
 
     // Vigencia del token: 24 horas por defecto (RNF-04)
     private static final long DEFAULT_EXPIRATION_SECONDS = 24L * 60L * 60L;
+    // Ventana máxima de gracia para renovación de sesión en /auth/refresh (30 minutos)
+    private static final long MAX_REFRESH_GRACE_SECONDS = 30L * 60L;
     private static final String HMAC_ALG = "HmacSHA256";
 
     private final byte[] secretBytes;
     private final long expirationSeconds;
 
-    @org.springframework.beans.factory.annotation.Autowired
+    @Autowired
     public AuthTokenService(
             @Value("${sigh.jwt.secret:SIGH_JWT_SECRET_KEY_2026_UNBOSQUE_HORARIOS_RNF04}") String secret,
             @Value("${sigh.jwt.expiration-seconds:86400}") long expirationSeconds) {
@@ -68,7 +71,16 @@ public class AuthTokenService {
      * Si el token está vencido o adulterado, arroja UnauthorizedException (RNF-04).
      */
     public Usuario verifyToken(String token) {
-        return parseAndVerifyToken(token);
+        return parseAndVerifyToken(token, 0L);
+    }
+
+    /**
+     * Valida el token para propósitos de renovación de sesión (/auth/refresh).
+     * Permite tokens vigentes o vencidos recientemente (ventana de gracia de hasta 30 minutos).
+     * Rechaza tajantemente tokens adulterados o tokens vencidos hace mucho tiempo.
+     */
+    public Usuario verifyTokenForRefresh(String token) {
+        return parseAndVerifyToken(token, MAX_REFRESH_GRACE_SECONDS);
     }
 
     public boolean isTokenExpired(String token) {
@@ -84,7 +96,7 @@ public class AuthTokenService {
         }
     }
 
-    private Usuario parseAndVerifyToken(String token) {
+    private Usuario parseAndVerifyToken(String token, long gracePeriodSeconds) {
         if (token == null || token.isBlank()) {
             throw new UnauthorizedException("RF-23", "Token de autenticación ausente.");
         }
@@ -110,7 +122,10 @@ public class AuthTokenService {
 
         Long exp = extractLong(payloadJson, "exp");
         long now = Instant.now().getEpochSecond();
-        if (exp == null || now > exp) {
+        if (exp == null || now > (exp + gracePeriodSeconds)) {
+            if (exp != null && now > exp) {
+                throw new UnauthorizedException("RF-23", "La sesión ha expirado hace demasiado tiempo. Inicie sesión nuevamente.");
+            }
             throw new UnauthorizedException("RF-23", "La sesión ha expirado. Inicie sesión nuevamente.");
         }
 

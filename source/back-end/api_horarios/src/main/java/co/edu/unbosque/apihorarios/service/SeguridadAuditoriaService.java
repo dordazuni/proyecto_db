@@ -87,7 +87,7 @@ public class SeguridadAuditoriaService {
             throw new UnauthorizedException("RF-23", "Token de autorización ausente o inválido.");
         }
         String token = authHeader.substring(7).trim();
-        Usuario tokenUser = authTokenService.verifyToken(token);
+        Usuario tokenUser = authTokenService.verifyTokenForRefresh(token);
 
         boolean prevForce = AuthContextHolder.isForceAuthLookup();
         AuthContextHolder.setForceAuthLookup(true);
