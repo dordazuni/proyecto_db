@@ -20,7 +20,7 @@ Ejecutar desde esta carpeta, en este orden, sobre una instalación limpia (RNF-0
 | 4 | `04_vistas.sql` | 7 vistas: atributos derivados, horario y reportes | `psql -U postgres -d sigh -f 04_vistas.sql` |
 | 5 | `05_roles_permisos.sql` | Dueño `sigh_owner`, 4 roles, 4 usuarios de conexión, permisos y seguridad por fila | `psql -U postgres -d sigh -v app_password='<contraseña>' -f 05_roles_permisos.sql` |
 | 6 | `06_datos_prueba.sql` | Datos ficticios: 2 períodos, 8 docentes, 7 espacios, 7 cursos, 13 secciones, 23 sesiones y una versión ya avalada y sincronizada | `psql -U postgres -d sigh -f 06_datos_prueba.sql` |
-| 7 | `07_pruebas_reglas.sql` | 41 pruebas: un intento inválido por regla, más casos válidos de control; no cambia ningún dato | `psql -U postgres -d sigh -f 07_pruebas_reglas.sql` |
+| 7 | `07_pruebas_reglas.sql` | 46 pruebas: un intento inválido por cada regla dura, los reportes de las reglas blandas y casos válidos de control; no cambia ningún dato | `psql -U postgres -d sigh -f 07_pruebas_reglas.sql` |
 
 Cada script termina con una consulta de verificación. Salida esperada:
 
@@ -30,7 +30,7 @@ Cada script termina con una consulta de verificación. Salida esperada:
 - **04:** 7 vistas y franjas con `hora_fin` = `hora_inicio` + 2 h.
 - **05:** la lista de permisos de escritura por rol.
 - **06:** 23 asignaciones, la versión de 2026-2 SINCRONIZADO (avalada por `aprobador`) y la de 2027-1 EN_EDICION, y la carga de cada docente.
-- **07:** una tabla de 41 pruebas y el resumen `41 | 41 | 0` (pruebas, correctas, fallidas). Cualquier fila con `ok = f` es un error.
+- **07:** una tabla de 46 pruebas y el resumen `46 | 46 | 0` (pruebas, correctas, fallidas). Cualquier fila con `ok = f` es un error.
 
 Los scripts usan `\set ON_ERROR_STOP on`: si algo falla, se detienen en el primer error.
 

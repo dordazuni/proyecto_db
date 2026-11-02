@@ -354,6 +354,51 @@ SELECT pg_temp.probar('RN-19', 'El Administrador consulta la disponibilidad (dat
     'app_administrador', 'admin',
     'SELECT * FROM disponibilidad', 'permission denied');
 
+-- =====================================================================
+-- 8. Reglas blandas y reportes (RN-09, RN-20, RN-21, RN-22; RF-20 a RF-22)
+-- =====================================================================
+-- Las reglas blandas no bloquean: avisan en una vista. Cada prueba
+-- comprueba que el caso que dejó el 06 aparece en su reporte (o que un
+-- caso correcto no aparece). Se consultan con el rol del Coordinador,
+-- que es quien usa estos reportes.
+SELECT pg_temp.probar('RN-09', 'Reporte: PROG1-2 (1 de 2) y ALG-2 (0 de 2) aparecen con sesiones faltantes',
+    'app_coordinador', 'coordinador',
+    'DO $t$ BEGIN IF (SELECT count(*) FROM v_secciones_sesiones_faltantes '
+    'WHERE (codigo_curso, numero_seccion) IN ((''PROG1'', 2), (''ALG'', 2))) <> 2 '
+    'THEN RAISE EXCEPTION ''faltan secciones en el reporte''; END IF; END $t$',
+    NULL);
+
+SELECT pg_temp.probar('RN-09', 'Reporte: BD1-1, que ya tiene sus 2 sesiones, no aparece',
+    'app_coordinador', 'coordinador',
+    'DO $t$ BEGIN IF EXISTS (SELECT 1 FROM v_secciones_sesiones_faltantes '
+    'WHERE codigo_curso = ''BD1'' AND numero_seccion = 1) '
+    'THEN RAISE EXCEPTION ''BD1-1 aparece y está completa''; END IF; END $t$',
+    NULL);
+
+SELECT pg_temp.probar('RN-20', 'Reporte: ALG-1 (lunes y martes) aparece en días consecutivos',
+    'app_coordinador', 'coordinador',
+    'DO $t$ BEGIN IF NOT EXISTS (SELECT 1 FROM v_sesiones_dias_consecutivos '
+    'WHERE codigo_curso = ''ALG'' AND numero_seccion = 1 '
+    'AND dia_1 = ''LUNES'' AND dia_2 = ''MARTES'') '
+    'THEN RAISE EXCEPTION ''ALG-1 no aparece''; END IF; END $t$',
+    NULL);
+
+SELECT pg_temp.probar('RN-21', 'Reporte: ETI-1 (matrícula real 8 < cupo mínimo 10) aparece en riesgo de cierre',
+    'app_coordinador', 'coordinador',
+    'DO $t$ BEGIN IF NOT EXISTS (SELECT 1 FROM v_secciones_riesgo_cierre '
+    'WHERE codigo_curso = ''ETI'' AND numero_seccion = 1) '
+    'THEN RAISE EXCEPTION ''ETI-1 no aparece''; END IF; END $t$',
+    NULL);
+
+SELECT pg_temp.probar('RN-22', 'Reporte: Sofía Díaz (2 h, mínimo 4) queda BAJO_MINIMO en 2027-1',
+    'app_coordinador', 'coordinador',
+    'DO $t$ BEGIN IF NOT EXISTS (SELECT 1 FROM v_carga_docente cd '
+    'JOIN periodo_academico p ON p.id_periodo = cd.id_periodo '
+    'WHERE p.codigo = ''2027-1'' AND cd.docente = ''Sofía Díaz'' '
+    'AND cd.carga_asignada = 2 AND cd.estado_carga = ''BAJO_MINIMO'') '
+    'THEN RAISE EXCEPTION ''Sofía no aparece BAJO_MINIMO''; END IF; END $t$',
+    NULL);
+
 \o
 
 -- =====================================================================
@@ -370,21 +415,63 @@ FROM resultado;
 
 -- =====================================================================
 -- RNF-08 (concurrencia): prueba MANUAL, necesita dos ventanas de psql.
--- Jorge tiene 6 h de 8 h. Dos coordinadores le asignan 2 h a la vez:
+-- Jorge Pérez (medio tiempo, máximo 8 h) tiene 6 h en 2027-1. Dos
+-- coordinadores le asignan 2 h cada uno al mismo tiempo; solo una de las
+-- dos puede quedar. La segunda sesión usa ALG-2 porque es la única
+-- sección con sesiones libres: BD1-2, PROG1-1 y PROG1-2 quedarían llenas
+-- y fallarían por RN-09 antes de llegar a RN-05.
+--
+--   En las dos ventanas:
+--     psql -U postgres -d sigh
+--     SELECT id_usuario FROM usuario WHERE nombre_usuario = 'coordinador';
 --
 --   Ventana 1:
 --     BEGIN;
---     SET app.id_usuario = '<id de coordinador>';
---     INSERT INTO asignacion ... Jorge, PROG1-2, LC-2, viernes 15:00 ...;
+--     SET ROLE app_coordinador;
+--     SET app.id_usuario = '<id del coordinador>';
+--     -- PROG1-2 con Jorge en LC-2, viernes 15:00 (Jorge pasa a 8 h)
+--     INSERT INTO asignacion (id_version, id_seccion, id_docente, id_espacio, id_franja)
+--     SELECT v.id_version, s.id_seccion, d.id_docente, e.id_espacio, f.id_franja
+--     FROM version_horario v
+--     JOIN periodo_academico p ON p.id_periodo = v.id_periodo AND p.codigo = '2027-1'
+--     JOIN seccion s ON s.id_periodo = p.id_periodo AND s.numero = 2
+--     JOIN curso   c ON c.id_curso = s.id_curso AND c.codigo = 'PROG1'
+--     JOIN docente d ON d.email = 'jorge.perez@ejemplo.edu'
+--     JOIN espacio e ON e.codigo = 'LC-2'
+--     JOIN franja  f ON f.dia_semana = 5 AND f.hora_inicio = '15:00'
+--     WHERE v.numero_version = 1;
 --     -- (todavía no hacer COMMIT)
+--
 --   Ventana 2:
 --     BEGIN;
---     SET app.id_usuario = '<id de coordinador>';
---     INSERT INTO asignacion ... Jorge, BD1-2 en otra franja ...;
+--     SET ROLE app_coordinador;
+--     SET app.id_usuario = '<id del coordinador>';
+--     -- Se habilita a Jorge para Álgebra y se le asigna ALG-2 en A-102, jueves 15:00
+--     INSERT INTO docente_curso (id_docente, id_curso)
+--     SELECT d.id_docente, c.id_curso FROM docente d, curso c
+--     WHERE d.email = 'jorge.perez@ejemplo.edu' AND c.codigo = 'ALG';
+--     INSERT INTO asignacion (id_version, id_seccion, id_docente, id_espacio, id_franja)
+--     SELECT v.id_version, s.id_seccion, d.id_docente, e.id_espacio, f.id_franja
+--     FROM version_horario v
+--     JOIN periodo_academico p ON p.id_periodo = v.id_periodo AND p.codigo = '2027-1'
+--     JOIN seccion s ON s.id_periodo = p.id_periodo AND s.numero = 2
+--     JOIN curso   c ON c.id_curso = s.id_curso AND c.codigo = 'ALG'
+--     JOIN docente d ON d.email = 'jorge.perez@ejemplo.edu'
+--     JOIN espacio e ON e.codigo = 'A-102'
+--     JOIN franja  f ON f.dia_semana = 4 AND f.hora_inicio = '15:00'
+--     WHERE v.numero_version = 1;
 --     -- queda ESPERANDO: el trigger bloqueó la fila de Jorge (FOR UPDATE)
---   Ventana 1:  COMMIT;
---   Ventana 2:  falla con "RN-05: el docente ... pasaría a 10 horas ..."
 --
--- Sin el bloqueo, ambas contarían 6 h y Jorge quedaría con 10 h.
--- Al terminar, en la ventana 1 borrar la sesión de prueba.
+--   Ventana 1:  COMMIT;
+--   Ventana 2:  falla con "RN-05: el docente ... pasaría a 10 horas y su
+--               contrato permite 8". Luego: ROLLBACK;
+--
+-- Control: si la ventana 2 se ejecuta sola, se acepta (6 h + 2 h = 8 h).
+-- Sin el bloqueo, las dos ventanas contarían 6 h y Jorge quedaría con 10 h.
+-- Al terminar, en la ventana 1 borrar la sesión de prueba:
+--     BEGIN; SET ROLE app_coordinador; SET app.id_usuario = '<id>';
+--     DELETE FROM asignacion
+--     WHERE id_docente = (SELECT id_docente FROM docente WHERE email = 'jorge.perez@ejemplo.edu')
+--       AND id_franja  = (SELECT id_franja FROM franja WHERE dia_semana = 5 AND hora_inicio = '15:00');
+--     COMMIT;
 -- =====================================================================
