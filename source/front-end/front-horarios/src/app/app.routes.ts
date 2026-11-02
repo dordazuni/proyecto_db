@@ -9,7 +9,9 @@ import { SighApiService } from './services/sigh-api.service';
 export const authGuard: CanActivateFn = () => {
   const api = inject(SighApiService);
   const router = inject(Router);
-  if (!api.authToken() && !api.authenticatedUser()) {
+  // Sin token no hay sesión, aunque quede un usuario guardado en el navegador.
+  if (!api.authToken()) {
+    api.logout();
     return router.createUrlTree(['/login']);
   }
   return api.obtenerSesionActual().pipe(

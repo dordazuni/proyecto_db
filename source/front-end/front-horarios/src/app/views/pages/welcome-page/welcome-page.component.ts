@@ -585,7 +585,7 @@ export class WelcomePageComponent implements OnInit {
   }
 
   cerrarSesion(): void {
-    this.sigh.api.logout();
+    this.sigh.cerrarSesion();
     this.router.navigate(['/login']);
   }
 }

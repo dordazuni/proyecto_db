@@ -1,4 +1,5 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
+import { Observable, catchError, forkJoin, of } from 'rxjs';
 import { SighApiService } from '../services/sigh-api.service';
 import { EchoService } from '../services/echo.service';
 import {
@@ -35,6 +36,10 @@ export type SighModuleTab =
   | 'programacion'
   | 'reportes'
   | 'seguridad';
+
+const MODULOS_VALIDOS: SighModuleTab[] = ['inicio', 'catalogos', 'planeacion', 'programacion', 'reportes', 'seguridad'];
+const UI_MODULO_KEY = 'sigh_ui_modulo';
+const UI_PERIODO_KEY = 'sigh_ui_periodo';
 
 export interface SighAlert {
   type: 'success' | 'error' | 'warning';
@@ -96,8 +101,9 @@ export class SighController {
   // Propiedades computadas de sesión y permisos por rol (RF-25 / RNF-04 / 05_roles_permisos.sql)
   readonly activeUser = computed(() => this.api.authenticatedUser());
 
+  /** Rol del usuario en sesión. Sin sesión no hay rol (cadena vacía): ningún permiso queda activo por defecto. */
   readonly userRole = computed(() =>
-    (this.api.authenticatedUser()?.nombreRol ?? 'ADMINISTRADOR').toUpperCase()
+    (this.api.authenticatedUser()?.nombreRol ?? '').toUpperCase()
   );
 
   readonly isAdmin = computed(() => this.userRole() === 'ADMINISTRADOR');
@@ -108,7 +114,7 @@ export class SighController {
   readonly canViewCatalogos = computed(() => this.isAdmin() || this.isCoordinador());
   readonly canViewPlaneacion = computed(() => this.isAdmin() || this.isCoordinador() || this.isDocente());
   readonly canViewProgramacion = computed(() => this.isAdmin() || this.isCoordinador() || this.isAprobador());
-  readonly canViewReportes = computed(() => true);
+  readonly canViewReportes = computed(() => this.isAdmin() || this.isCoordinador() || this.isAprobador() || this.isDocente());
   readonly canViewSeguridad = computed(() => this.isAdmin());
 
   readonly selectedPeriodo = computed(() => {
@@ -121,10 +127,114 @@ export class SighController {
     return this.versiones().find((v) => v.idVersion === vid) ?? null;
   });
 
+  // =========================================================================
+  // SESIÓN: limpieza de estado y vista conservada al recargar (F5)
+  // =========================================================================
+
+  /**
+   * Deja el controlador como recién creado. Se llama al iniciar y al cerrar sesión,
+   * para que ningún dato de un usuario (o rol) quede visible para el siguiente.
+   */
+  resetState(): void {
+    this.activeModule.set('inicio');
+    this.loading.set(false);
+    this.alert.set(null);
+
+    this.periodos.set([]);
+    this.selectedPeriodoId.set(null);
+    this.tiposContrato.set([]);
+    this.docentes.set([]);
+    this.espacios.set([]);
+    this.recursos.set([]);
+    this.espacioRecursos.set([]);
+    this.cursos.set([]);
+    this.cursoRecursos.set([]);
+    this.docenteCursos.set([]);
+    this.franjas.set([]);
+    this.parametros.set([]);
+
+    this.secciones.set([]);
+    this.disponibilidades.set([]);
+
+    this.versiones.set([]);
+    this.selectedVersionId.set(null);
+    this.asignaciones.set([]);
+    this.horarioGrilla.set([]);
+
+    this.reporteHorario.set([]);
+    this.reporteCargaDocente.set([]);
+    this.reporteRiesgoCierre.set([]);
+    this.reporteSesionesFaltantes.set([]);
+    this.reporteDiasConsecutivos.set([]);
+
+    this.roles.set([]);
+    this.usuarios.set([]);
+    this.auditoria.set([]);
+
+    this.borrarVistaGuardada();
+  }
+
+  /** Cierra la sesión en el backend y en el navegador, y borra todo el estado en memoria. */
+  cerrarSesion(): void {
+    this.api.logout();
+    this.resetState();
+  }
+
+  /** Indica si el rol en sesión puede abrir un módulo (mismas reglas del menú lateral). */
+  puedeVerModulo(tab: SighModuleTab): boolean {
+    switch (tab) {
+      case 'inicio':
+        return this.api.isAuthenticated();
+      case 'catalogos':
+        return this.canViewCatalogos();
+      case 'planeacion':
+        return this.canViewPlaneacion();
+      case 'programacion':
+        return this.canViewProgramacion();
+      case 'reportes':
+        return this.canViewReportes();
+      case 'seguridad':
+        return this.canViewSeguridad();
+      default:
+        return false;
+    }
+  }
+
+  // La vista (módulo y período) se guarda en sessionStorage: sobrevive a F5 en la
+  // misma pestaña, se borra al cerrar sesión y no se comparte con otras pestañas.
+  private guardarVista(clave: string, valor: string): void {
+    try {
+      sessionStorage.setItem(clave, valor);
+    } catch {
+      // almacenamiento no disponible: la vista simplemente no se conserva
+    }
+  }
+
+  private leerVista(clave: string): string | null {
+    try {
+      return sessionStorage.getItem(clave);
+    } catch {
+      return null;
+    }
+  }
+
+  private borrarVistaGuardada(): void {
+    try {
+      sessionStorage.removeItem(UI_MODULO_KEY);
+      sessionStorage.removeItem(UI_PERIODO_KEY);
+    } catch {
+      // ignorar
+    }
+  }
+
+  private leerModuloGuardado(): SighModuleTab | null {
+    const valor = this.leerVista(UI_MODULO_KEY) as SighModuleTab | null;
+    return valor && MODULOS_VALIDOS.includes(valor) ? valor : null;
+  }
+
   // Inicialización de datos maestros filtrada según permisos del rol activo en BD
   initializeDashboard(): void {
     this.loading.set(true);
-    this.clearAlert();
     this.activeModule.set('inicio');
     this.echoService.checkEcho().subscribe({
       error: () => {}
@@ -137,18 +247,16 @@ export class SighController {
   }
 
   setModule(tab: SighModuleTab): void {
-    if (tab === 'catalogos' && !this.canViewCatalogos()) return;
-    if (tab === 'planeacion' && !this.canViewPlaneacion()) return;
-    if (tab === 'programacion' && !this.canViewProgramacion()) return;
-    if (tab === 'seguridad' && !this.canViewSeguridad()) return;
+    if (!this.puedeVerModulo(tab)) return;
 
     this.activeModule.set(tab);
+    this.guardarVista(UI_MODULO_KEY, tab);
     this.clearAlert();
     if (tab === 'planeacion') {
       if (this.isDocente()) {
         const idDoc = this.api.authenticatedUser()?.idDocente;
-        const pid = this.selectedPeriodoId() || 1;
-        if (idDoc) {
+        const pid = this.selectedPeriodoId();
+        if (idDoc && pid) {
           this.cargarDisponibilidad(idDoc, pid);
         }
       } else {
@@ -197,32 +305,56 @@ export class SighController {
   // =========================================================================
 
   cargarCatalogosBase(): void {
-    this.api.listarPeriodos().subscribe({
-      next: (list) => {
-        this.periodos.set(list);
+    const puedeVerCatalogos = this.isAdmin() || this.isCoordinador();
+    // Cada lista falla por separado (lista vacía) sin tumbar las demás.
+    const lista = <T>(obs: Observable<T[]>): Observable<T[]> => obs.pipe(catchError(() => of([] as T[])));
+    const vacia = <T>(): Observable<T[]> => of([] as T[]);
+
+    // Se espera a que lleguen TODOS los catálogos antes de restaurar la vista y elegir
+    // el período: así, tras F5, el módulo restaurado ya encuentra sus listas cargadas.
+    forkJoin({
+      periodos: this.api.listarPeriodos(),
+      cursos: lista(this.api.listarCursos()),
+      franjas: lista(this.api.listarFranjas()),
+      tiposContrato: puedeVerCatalogos ? lista(this.api.listarTiposContrato()) : vacia<TipoContrato>(),
+      docentes: puedeVerCatalogos ? lista(this.api.listarDocentes()) : vacia<Docente>(),
+      espacios: puedeVerCatalogos ? lista(this.api.listarEspacios()) : vacia<Espacio>(),
+      recursos: puedeVerCatalogos ? lista(this.api.listarRecursos()) : vacia<Recurso>(),
+      parametros: puedeVerCatalogos ? lista(this.api.listarParametros()) : vacia<ParametroSistema>()
+    }).subscribe({
+      next: (d) => {
+        this.periodos.set(d.periodos);
+        this.cursos.set(d.cursos);
+        this.franjas.set(d.franjas);
+        this.tiposContrato.set(d.tiposContrato);
+        this.docentes.set(d.docentes);
+        this.espacios.set(d.espacios);
+        this.recursos.set(d.recursos);
+        this.parametros.set(d.parametros);
+
+        // F5: se restaura el módulo ANTES de seleccionar el período, para que la carga
+        // del período (secciones, versiones, reportes) alimente el módulo restaurado.
+        const moduloGuardado = this.leerModuloGuardado();
+        if (moduloGuardado && this.puedeVerModulo(moduloGuardado)) {
+          this.activeModule.set(moduloGuardado);
+        }
+
+        const list = d.periodos;
         if (!this.selectedPeriodoId() && list.length > 0) {
-          const activo = list.find((p) => p.estado === 'ACTIVO' || p.estado === 'PLANEACION') ?? list[0];
+          const idGuardado = Number(this.leerVista(UI_PERIODO_KEY));
+          const guardado = list.find((p) => p.idPeriodo === idGuardado);
+          const activo = guardado ?? list.find((p) => p.estado === 'ACTIVO' || p.estado === 'PLANEACION') ?? list[0];
           this.seleccionarPeriodo(activo.idPeriodo!);
         }
         this.loading.set(false);
       },
       error: (err) => this.handleApiError(err, 'Error al cargar períodos')
     });
-
-    this.api.listarCursos().subscribe({ next: (d) => this.cursos.set(d), error: () => {} });
-    this.api.listarFranjas().subscribe({ next: (d) => this.franjas.set(d), error: () => {} });
-
-    if (this.isAdmin() || this.isCoordinador()) {
-      this.api.listarTiposContrato().subscribe({ next: (d) => this.tiposContrato.set(d), error: () => {} });
-      this.api.listarDocentes().subscribe({ next: (d) => this.docentes.set(d), error: () => {} });
-      this.api.listarEspacios().subscribe({ next: (d) => this.espacios.set(d), error: () => {} });
-      this.api.listarRecursos().subscribe({ next: (d) => this.recursos.set(d), error: () => {} });
-      this.api.listarParametros().subscribe({ next: (d) => this.parametros.set(d), error: () => {} });
-    }
   }
 
   seleccionarPeriodo(idPeriodo: number): void {
     this.selectedPeriodoId.set(Number(idPeriodo));
+    this.guardarVista(UI_PERIODO_KEY, String(idPeriodo));
     if (this.isAdmin() || this.isCoordinador()) {
       this.cargarSecciones(Number(idPeriodo));
     }
@@ -495,6 +627,11 @@ export class SighController {
           this.selectedVersionId.set(null);
           this.asignaciones.set([]);
           this.horarioGrilla.set([]);
+        }
+        // Si el usuario está en Reportes (por ejemplo, tras F5 o al cambiar de período),
+        // los reportes se recargan con la versión recién seleccionada.
+        if (this.activeModule() === 'reportes') {
+          this.cargarTodosLosReportes();
         }
       },
       error: (err) => this.handleApiError(err, 'Error al cargar versiones de horario (RF-12)')
