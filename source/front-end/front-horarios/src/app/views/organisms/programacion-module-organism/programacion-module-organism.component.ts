@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, effect, inject, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SighController } from '../../../controllers/sigh.controller';
@@ -117,7 +117,7 @@ import { Franja, HorarioDetalle } from '../../../models/sigh.models';
                 RF-13 & RF-14 | Asignar Sesión en Versión v{{ ver.numeroVersion }} ({{ ver.estado }})
               </h3>
               <p class="md-card-subtitle">
-                Cada asignación se guarda al instante y pasa por las 19 reglas duras en la base de datos (RN-01 a RN-16: cruces, aforo, horas contrato, habilitación, recursos, disponibilidad).
+                Cada asignación se guarda al instante y la base de datos valida las reglas duras RN-01 a RN-09 y RN-11 a RN-16 (cruces, aforo, horas de contrato, habilitación, recursos, disponibilidad y estado de la versión).
               </p>
             </div>
             @if (!esEditable()) {
@@ -132,7 +132,10 @@ import { Franja, HorarioDetalle } from '../../../models/sigh.models';
             <div class="md-field">
               <label>Sección Abierta (Curso / Cupo)</label>
               <select class="md-select" [(ngModel)]="formAsignacion.idSeccion">
-                @for (s of sigh.secciones(); track s.idSeccion) {
+                <option [ngValue]="null" disabled>
+                  {{ seccionesAbiertas().length ? '— Seleccione una sección —' : '— No hay secciones abiertas en este período —' }}
+                </option>
+                @for (s of seccionesAbiertas(); track s.idSeccion) {
                   <option [ngValue]="s.idSeccion">
                     #{{ s.idSeccion }} | {{ s.codigoCurso }} Sec. {{ s.numero }} ({{ s.nombreCurso }}) — [{{ s.estado }}, Mat: {{ s.matriculaReal ?? s.matriculaProyectada }}]
                   </option>
@@ -143,6 +146,7 @@ import { Franja, HorarioDetalle } from '../../../models/sigh.models';
             <div class="md-field">
               <label>Docente (Valida RN-01, RN-05, RN-12, RN-13)</label>
               <select class="md-select" [(ngModel)]="formAsignacion.idDocente">
+                <option [ngValue]="null" disabled>— Seleccione un docente —</option>
                 @for (d of sigh.docentes(); track d.idDocente) {
                   <option [ngValue]="d.idDocente">
                     #{{ d.idDocente }} | {{ d.nombres }} {{ d.apellidos }} ({{ d.nombreTipoContrato }}: máx {{ d.horasMax }}h)
@@ -154,6 +158,7 @@ import { Franja, HorarioDetalle } from '../../../models/sigh.models';
             <div class="md-field">
               <label>Espacio Físico (Valida RN-02, RN-04, RN-14)</label>
               <select class="md-select" [(ngModel)]="formAsignacion.idEspacio">
+                <option [ngValue]="null" disabled>— Seleccione un espacio —</option>
                 @for (e of sigh.espacios(); track e.idEspacio) {
                   <option [ngValue]="e.idEspacio">
                     #{{ e.idEspacio }} | {{ e.codigo }} - {{ e.nombre }} (Cap: {{ e.capacidad }}, {{ e.tipoEspacio }})
@@ -163,8 +168,9 @@ import { Franja, HorarioDetalle } from '../../../models/sigh.models';
             </div>
 
             <div class="md-field">
-              <label>Franja Horaria 2h (Valida RN-03, RN-06, RN-07)</label>
+              <label>Franja Horaria 2h (Valida RN-03, RN-06 a RN-08)</label>
               <select class="md-select" [(ngModel)]="formAsignacion.idFranja">
+                <option [ngValue]="null" disabled>— Seleccione una franja —</option>
                 @for (f of sigh.franjas(); track f.idFranja) {
                   <option [ngValue]="f.idFranja">
                     #F{{ f.idFranja }} | {{ f.nombreDia }} {{ f.horaInicio }} - {{ f.horaFin }}
@@ -237,14 +243,23 @@ import { Franja, HorarioDetalle } from '../../../models/sigh.models';
 export class ProgramacionModuleOrganismComponent implements OnInit {
   readonly sigh = inject(SighController);
 
-  idDocumentoExterno = 'DOC-EXT-2026-0001';
+  idDocumentoExterno = '';
 
-  formAsignacion = {
-    idSeccion: 1,
-    idDocente: 1,
-    idEspacio: 1,
-    idFranja: 1
+  /** Formulario de asignación. null = aún no elegido (no se inventan ids por defecto). */
+  formAsignacion: {
+    idSeccion: number | null;
+    idDocente: number | null;
+    idEspacio: number | null;
+    idFranja: number | null;
+  } = {
+    idSeccion: null,
+    idDocente: null,
+    idEspacio: null,
+    idFranja: null
   };
+
+  /** Solo las secciones ABIERTAS se pueden programar: una CERRADA no recibe sesiones (RN-11). */
+  readonly seccionesAbiertas = computed(() => this.sigh.secciones().filter((s) => s.estado === 'ABIERTA'));
 
   readonly esEditable = computed(() => {
     const estado = this.sigh.selectedVersion()?.estado;
@@ -252,7 +267,7 @@ export class ProgramacionModuleOrganismComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    const s = this.sigh.secciones()[0];
+    const s = this.seccionesAbiertas()[0];
     if (s?.idSeccion) this.formAsignacion.idSeccion = s.idSeccion;
     const d = this.sigh.docentes()[0];
     if (d?.idDocente) this.formAsignacion.idDocente = d.idDocente;
@@ -262,26 +277,58 @@ export class ProgramacionModuleOrganismComponent implements OnInit {
     if (f?.idFranja) this.formAsignacion.idFranja = f.idFranja;
   }
 
+  constructor() {
+    // Si cambia el período, la sección elegida ya no pertenece a la lista: se descarta.
+    effect(() => {
+      const secciones = this.seccionesAbiertas();
+      untracked(() => {
+        if (!secciones.some((s) => s.idSeccion === this.formAsignacion.idSeccion)) {
+          this.formAsignacion.idSeccion = secciones[0]?.idSeccion ?? null;
+        }
+      });
+    });
+  }
+
   crearNuevaVersion(): void {
-    const pid = this.sigh.selectedPeriodoId() || 1;
+    const pid = this.sigh.selectedPeriodoId();
+    if (!pid) {
+      this.sigh.alert.set({ type: 'warning', title: 'Falta el período', message: 'Selecciona un período en la barra superior.' });
+      return;
+    }
     this.sigh.crearVersion(pid);
   }
 
   sincronizar(idVersion: number): void {
-    if (!this.idDocumentoExterno.trim()) return;
+    if (!this.idDocumentoExterno.trim()) {
+      this.sigh.alert.set({
+        type: 'warning',
+        title: 'RF-17 | Falta el documento externo',
+        message: 'Escribe el identificador del documento en el repositorio externo antes de sincronizar.'
+      });
+      return;
+    }
     this.sigh.sincronizarVersion(idVersion, this.idDocumentoExterno.trim());
   }
 
   asignarSesion(): void {
     const vid = this.sigh.selectedVersionId();
     if (!vid) return;
-    this.sigh.crearAsignacion({
-      idVersion: vid,
-      idSeccion: Number(this.formAsignacion.idSeccion),
-      idDocente: Number(this.formAsignacion.idDocente),
-      idEspacio: Number(this.formAsignacion.idEspacio),
-      idFranja: Number(this.formAsignacion.idFranja)
-    });
+    const { idSeccion, idDocente, idEspacio, idFranja } = this.formAsignacion;
+    // Cada id debe existir en las listas cargadas ahora (no valores viejos de otro período).
+    const valido =
+      this.seccionesAbiertas().some((s) => s.idSeccion === idSeccion) &&
+      this.sigh.docentes().some((d) => d.idDocente === idDocente) &&
+      this.sigh.espacios().some((e) => e.idEspacio === idEspacio) &&
+      this.sigh.franjas().some((f) => f.idFranja === idFranja);
+    if (!valido || !idSeccion || !idDocente || !idEspacio || !idFranja) {
+      this.sigh.alert.set({
+        type: 'warning',
+        title: 'RF-13 | Faltan datos',
+        message: 'Selecciona sección, docente, espacio y franja antes de asignar la sesión.'
+      });
+      return;
+    }
+    this.sigh.crearAsignacion({ idVersion: vid, idSeccion, idDocente, idEspacio, idFranja });
   }
 
   alSeleccionarFranjaEnGrilla(franja: Franja): void {

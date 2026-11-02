@@ -46,7 +46,7 @@ import { Curso, PeriodoAcademico, Recurso } from '../../../models/sigh.models';
           <div class="md-form-grid">
             <div class="md-field">
               <label>Código del Período</label>
-              <input class="md-input" [(ngModel)]="nuevoPeriodo.codigo" placeholder="Ej. 2026-2" />
+              <input class="md-input" [(ngModel)]="nuevoPeriodo.codigo" placeholder="Ej. 2027-2" />
             </div>
             <div class="md-field">
               <label>Fecha Inicio</label>
@@ -105,8 +105,14 @@ import { Curso, PeriodoAcademico, Recurso } from '../../../models/sigh.models';
                   </td>
                   @if (sigh.isAdmin()) {
                     <td>
-                      <button class="md-btn md-btn-tonal md-btn-sm" (click)="cambiarEstadoPeriodo(p, 'ACTIVO')">Activar</button>
-                      <button class="md-btn md-btn-outlined md-btn-sm" style="margin-left: 6px" (click)="cambiarEstadoPeriodo(p, 'CERRADO')">Cerrar</button>
+                      @if (p.estado !== 'ACTIVO' && p.estado !== 'CERRADO') {
+                        <button class="md-btn md-btn-tonal md-btn-sm" (click)="cambiarEstadoPeriodo(p, 'ACTIVO')">Activar</button>
+                      }
+                      @if (p.estado !== 'CERRADO') {
+                        <button class="md-btn md-btn-outlined md-btn-sm" style="margin-left: 6px" (click)="cambiarEstadoPeriodo(p, 'CERRADO')">Cerrar</button>
+                      } @else {
+                        <span style="color: #94a3b8">—</span>
+                      }
                     </td>
                   }
                 </tr>
@@ -210,6 +216,7 @@ import { Curso, PeriodoAcademico, Recurso } from '../../../models/sigh.models';
               <div class="md-field">
                 <label>Seleccionar Curso para Habilitar</label>
                 <select class="md-select" [(ngModel)]="cursoParaHabilitarId">
+                  <option [ngValue]="null" disabled>— Seleccione un curso —</option>
                   @for (c of sigh.cursos(); track c.idCurso) {
                     <option [ngValue]="c.idCurso">{{ c.codigo }} - {{ c.nombre }}</option>
                   }
@@ -316,6 +323,7 @@ import { Curso, PeriodoAcademico, Recurso } from '../../../models/sigh.models';
               <div class="md-field">
                 <label>Recurso</label>
                 <select class="md-select" [(ngModel)]="recursoEspacioId">
+                  <option [ngValue]="null" disabled>— Seleccione un recurso —</option>
                   @for (r of sigh.recursos(); track r.idRecurso) {
                     <option [ngValue]="r.idRecurso">{{ r.nombre }} ({{ r.categoria }})</option>
                   }
@@ -453,6 +461,7 @@ import { Curso, PeriodoAcademico, Recurso } from '../../../models/sigh.models';
               <div class="md-field">
                 <label>Recurso Exigido</label>
                 <select class="md-select" [(ngModel)]="recursoCursoId">
+                  <option [ngValue]="null" disabled>— Seleccione un recurso —</option>
                   @for (r of sigh.recursos(); track r.idRecurso) {
                     <option [ngValue]="r.idRecurso">{{ r.nombre }} ({{ r.categoria }})</option>
                   }
@@ -622,7 +631,11 @@ import { Curso, PeriodoAcademico, Recurso } from '../../../models/sigh.models';
                   <td><code>{{ param.clave }}</code></td>
                   <td style="max-width: 140px">
                     @if (sigh.isAdmin()) {
-                      <input type="number" class="md-input" [(ngModel)]="param.valor" />
+                      <input
+                        type="number"
+                        class="md-input"
+                        [ngModel]="parametroDraft[param.clave] ?? param.valor"
+                        (ngModelChange)="parametroDraft[param.clave] = $event" />
                     } @else {
                       <span class="md-chip md-chip-info">{{ param.valor }}</span>
                     }
@@ -630,7 +643,10 @@ import { Curso, PeriodoAcademico, Recurso } from '../../../models/sigh.models';
                   <td>{{ param.descripcion }}</td>
                   @if (sigh.isAdmin()) {
                     <td>
-                      <button class="md-btn md-btn-filled md-btn-sm" (click)="sigh.actualizarParametro(param.clave, param.valor, param.descripcion)">
+                      <button
+                        class="md-btn md-btn-filled md-btn-sm"
+                        [disabled]="!tieneCambio(param.clave, param.valor)"
+                        (click)="guardarParametro(param.clave, param.valor, param.descripcion)">
                         <span class="material-icons">save</span> Guardar
                       </button>
                     </td>
@@ -648,12 +664,13 @@ export class CatalogosModuleOrganismComponent implements OnInit {
   readonly sigh = inject(SighController);
   readonly subTab = signal<'periodos' | 'docentes' | 'espacios' | 'cursos' | 'recursos' | 'franjas' | 'parametros'>('periodos');
 
-  nuevoPeriodo: PeriodoAcademico = {
-    codigo: '2026-2',
-    fechaInicio: '2026-07-20',
-    fechaFin: '2026-11-30',
-    estado: 'PLANEACION'
-  };
+  nuevoPeriodo: PeriodoAcademico = this.periodoVacio();
+
+  /**
+   * Valores de parámetros escritos y aún no guardados. Se edita esta copia, no la lista
+   * del controlador: si la base rechaza el cambio, la tabla sigue mostrando el valor real.
+   */
+  parametroDraft: Record<string, number | null> = {};
 
   nuevoRecurso: Recurso = {
     nombre: '',
@@ -667,14 +684,14 @@ export class CatalogosModuleOrganismComponent implements OnInit {
   };
 
   readonly docenteSeleccionadoId = signal<number | null>(null);
-  cursoParaHabilitarId = 1;
+  cursoParaHabilitarId: number | null = null;
 
   readonly espacioSeleccionadoId = signal<number | null>(null);
-  recursoEspacioId = 1;
+  recursoEspacioId: number | null = null;
   recursoEspacioCantidad = 1;
 
   readonly cursoSeleccionadoId = signal<number | null>(null);
-  recursoCursoId = 1;
+  recursoCursoId: number | null = null;
 
   ngOnInit(): void {
     if (this.sigh.isCoordinador()) {
@@ -689,14 +706,49 @@ export class CatalogosModuleOrganismComponent implements OnInit {
     }
   }
 
+  private periodoVacio(): PeriodoAcademico {
+    return { codigo: '', fechaInicio: '', fechaFin: '', estado: 'PLANEACION' };
+  }
+
   guardarPeriodo(): void {
-    if (!this.nuevoPeriodo.codigo) return;
-    this.sigh.crearPeriodo({ ...this.nuevoPeriodo });
+    const codigo = (this.nuevoPeriodo.codigo || '').trim();
+    if (!/^[0-9]{4}-[12]$/.test(codigo)) {
+      this.sigh.showWarning('RF-01 | Código no válido', 'El código del período debe tener la forma AAAA-1 o AAAA-2 (por ejemplo, 2027-2).');
+      return;
+    }
+    if (!this.nuevoPeriodo.fechaInicio || !this.nuevoPeriodo.fechaFin) {
+      this.sigh.showWarning('RF-01 | Faltan fechas', 'Indica la fecha de inicio y la fecha de fin del período.');
+      return;
+    }
+    if (this.nuevoPeriodo.fechaFin <= this.nuevoPeriodo.fechaInicio) {
+      this.sigh.showWarning('RF-01 | Fechas no válidas', 'La fecha de fin debe ser posterior a la fecha de inicio.');
+      return;
+    }
+    this.sigh.crearPeriodo({ ...this.nuevoPeriodo, codigo }, () => (this.nuevoPeriodo = this.periodoVacio()));
   }
 
   cambiarEstadoPeriodo(p: PeriodoAcademico, estado: string): void {
     if (!p.idPeriodo) return;
+    if (estado === 'CERRADO' && !this.sigh.confirmar(`¿Cerrar el período ${p.codigo}? Un período cerrado no se vuelve a activar desde la aplicación.`)) {
+      return;
+    }
     this.sigh.actualizarPeriodo(p.idPeriodo, { ...p, estado });
+  }
+
+  tieneCambio(clave: string, valorActual: number): boolean {
+    const escrito = this.parametroDraft[clave];
+    return escrito !== undefined && escrito !== null && String(escrito) !== '' && Number(escrito) !== Number(valorActual);
+  }
+
+  guardarParametro(clave: string, valorActual: number, descripcion: string): void {
+    const escrito = this.parametroDraft[clave];
+    const valor = Number(escrito);
+    if (escrito === null || escrito === undefined || String(escrito) === '' || !Number.isFinite(valor)) {
+      this.sigh.showWarning('RF-08 | Valor no válido', `Escribe un número para el parámetro ${clave}.`);
+      return;
+    }
+    if (valor === Number(valorActual)) return;
+    this.sigh.actualizarParametro(clave, valor, descripcion, () => delete this.parametroDraft[clave]);
   }
 
   seleccionarDocenteHabilitacion(idDocente: number): void {
@@ -706,7 +758,10 @@ export class CatalogosModuleOrganismComponent implements OnInit {
 
   habilitarCurso(): void {
     const idDoc = this.docenteSeleccionadoId();
-    if (!idDoc || !this.cursoParaHabilitarId) return;
+    if (!idDoc || !this.cursoParaHabilitarId) {
+      this.sigh.showWarning('RF-06 | Faltan datos', 'Selecciona el docente y el curso que quieres habilitar.');
+      return;
+    }
     this.sigh.habilitarDocenteEnCurso(idDoc, Number(this.cursoParaHabilitarId));
   }
 
@@ -717,14 +772,29 @@ export class CatalogosModuleOrganismComponent implements OnInit {
 
   asignarRecursoEspacio(): void {
     const idEsp = this.espacioSeleccionadoId();
-    if (!idEsp || !this.recursoEspacioId) return;
+    if (!idEsp || !this.recursoEspacioId) {
+      this.sigh.showWarning('RF-04 | Falta el recurso', 'Selecciona el recurso que quieres asignar al espacio.');
+      return;
+    }
+    if (!Number.isInteger(Number(this.recursoEspacioCantidad)) || Number(this.recursoEspacioCantidad) < 1) {
+      this.sigh.showWarning('RF-04 | Cantidad no válida', 'La cantidad debe ser un número entero mayor o igual a 1.');
+      return;
+    }
     this.sigh.asignarRecursoAEspacio(idEsp, Number(this.recursoEspacioId), Number(this.recursoEspacioCantidad));
   }
 
   guardarCurso(): void {
-    if (!this.nuevoCurso.codigo || !this.nuevoCurso.nombre) return;
-    this.sigh.crearCurso({ ...this.nuevoCurso });
-    this.nuevoCurso = { codigo: '', nombre: '', frecuenciaSemanal: 2 };
+    const codigo = (this.nuevoCurso.codigo || '').trim();
+    const nombre = (this.nuevoCurso.nombre || '').trim();
+    if (!codigo || !nombre) {
+      this.sigh.showWarning('RF-05 | Faltan datos', 'Escribe el código y el nombre del curso.');
+      return;
+    }
+    // El formulario se limpia SOLO si la base acepta el curso; si lo rechaza, los datos siguen ahí para corregirlos.
+    this.sigh.crearCurso(
+      { ...this.nuevoCurso, codigo, nombre },
+      () => (this.nuevoCurso = { codigo: '', nombre: '', frecuenciaSemanal: 2 })
+    );
   }
 
   seleccionarCursoRequisitos(idCurso: number): void {
@@ -734,13 +804,22 @@ export class CatalogosModuleOrganismComponent implements OnInit {
 
   agregarRecursoCurso(): void {
     const idCur = this.cursoSeleccionadoId();
-    if (!idCur || !this.recursoCursoId) return;
+    if (!idCur || !this.recursoCursoId) {
+      this.sigh.showWarning('RF-05 | Falta el recurso', 'Selecciona el recurso que exige el curso.');
+      return;
+    }
     this.sigh.agregarRecursoACurso(idCur, Number(this.recursoCursoId));
   }
 
   guardarRecurso(): void {
-    if (!this.nuevoRecurso.nombre) return;
-    this.sigh.crearRecurso({ ...this.nuevoRecurso });
-    this.nuevoRecurso = { nombre: '', categoria: 'EQUIPO' };
+    const nombre = (this.nuevoRecurso.nombre || '').trim();
+    if (!nombre) {
+      this.sigh.showWarning('RF-04 | Falta el nombre', 'Escribe el nombre del recurso.');
+      return;
+    }
+    this.sigh.crearRecurso(
+      { ...this.nuevoRecurso, nombre },
+      () => (this.nuevoRecurso = { nombre: '', categoria: 'EQUIPO' })
+    );
   }
 }

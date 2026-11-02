@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SighController } from '../../../controllers/sigh.controller';
@@ -25,7 +25,7 @@ import { Usuario } from '../../../models/sigh.models';
           <div>
             <h3 class="md-card-title"><span class="material-icons">person_add</span> RF-23 | Registrar Usuario con Rol (S-09, S-14)</h3>
             <p class="md-card-subtitle">
-              Cada usuario tiene un único rol (Administrador, Coordinador académico, Aprobador o Docente) y puede vincularse opcionalmente a un registro de Docente.
+              Cada usuario tiene un único rol (Administrador, Coordinador académico, Aprobador o Docente). Solo los usuarios con rol Docente se vinculan a su registro de docente (S-09).
             </p>
           </div>
         </div>
@@ -40,21 +40,27 @@ import { Usuario } from '../../../models/sigh.models';
           </div>
           <div class="md-field">
             <label>Rol del Sistema (RF-25)</label>
-            <select class="md-select" [(ngModel)]="nuevoUsuario.idRol">
+            <select class="md-select" [ngModel]="nuevoUsuario.idRol" (ngModelChange)="cambiarRolNuevoUsuario($event)">
+              <option [ngValue]="null" disabled>— Seleccione un rol —</option>
               @for (r of sigh.roles(); track r.idRol) {
                 <option [ngValue]="r.idRol">#{{ r.idRol }} - {{ r.nombre }}</option>
               }
             </select>
           </div>
-          <div class="md-field">
-            <label>Vínculo a Docente (Opcional — S-09)</label>
-            <select class="md-select" [(ngModel)]="nuevoUsuario.idDocente">
-              <option [ngValue]="null">— Sin vínculo a docente —</option>
-              @for (d of sigh.docentes(); track d.idDocente) {
-                <option [ngValue]="d.idDocente">#{{ d.idDocente }} - {{ d.nombres }} {{ d.apellidos }}</option>
-              }
-            </select>
-          </div>
+          <!-- S-09: solo un usuario con rol DOCENTE se vincula, y a un docente que aún no tenga usuario -->
+          @if (esRolDocente(nuevoUsuario.idRol)) {
+            <div class="md-field">
+              <label>Docente vinculado (obligatorio para el rol DOCENTE — S-09)</label>
+              <select class="md-select" [(ngModel)]="nuevoUsuario.idDocente">
+                <option [ngValue]="null" disabled>
+                  {{ docentesSinUsuario().length ? '— Seleccione el docente —' : '— Todos los docentes ya tienen usuario —' }}
+                </option>
+                @for (d of docentesSinUsuario(); track d.idDocente) {
+                  <option [ngValue]="d.idDocente">#{{ d.idDocente }} - {{ d.nombres }} {{ d.apellidos }}</option>
+                }
+              </select>
+            </div>
+          }
           <div>
             <button class="md-btn md-btn-filled" (click)="crearUsuario()">
               <span class="material-icons">person_add_alt_1</span> Crear Usuario
@@ -94,6 +100,8 @@ import { Usuario } from '../../../models/sigh.models';
                   <td>
                     @if (u.nombreUsuario === 'sistema') {
                       <span class="md-chip md-chip-neutral">Sistema técnico (bloqueado)</span>
+                    } @else if (u.idUsuario === sigh.activeUser()?.idUsuario) {
+                      <span class="md-chip md-chip-neutral">Tu usuario (no se desactiva)</span>
                     } @else {
                       <button
                         class="md-btn md-btn-outlined md-btn-sm"
@@ -132,7 +140,6 @@ import { Usuario } from '../../../models/sigh.models';
               <option value="">— Todas las tablas —</option>
               <option value="asignacion">asignacion</option>
               <option value="version_horario">version_horario</option>
-              <option value="disponibilidad">disponibilidad</option>
             </select>
           </div>
           <div class="md-field">
@@ -210,13 +217,31 @@ export class SeguridadModuleOrganismComponent {
   readonly sigh = inject(SighController);
   readonly subTab = signal<'usuarios' | 'auditoria'>('usuarios');
 
-  nuevoUsuario: Usuario = {
-    nombreUsuario: '',
-    contrasena: '',
-    activo: true,
-    idRol: 1,
-    idDocente: null
-  };
+  /** Formulario de nuevo usuario. idRol null = aún no elegido (no se asume ningún rol). */
+  nuevoUsuario: Omit<Usuario, 'idRol'> & { idRol: number | null } = this.usuarioVacio();
+
+  /** Docentes que todavía no tienen usuario: la vinculación es 1:1 (uq_usuario_docente). */
+  readonly docentesSinUsuario = computed(() => {
+    const vinculados = new Set(this.sigh.usuarios().map((u) => u.idDocente).filter((id) => id != null));
+    return this.sigh.docentes().filter((d) => !vinculados.has(d.idDocente));
+  });
+
+  private usuarioVacio(): Omit<Usuario, 'idRol'> & { idRol: number | null } {
+    return { nombreUsuario: '', contrasena: '', activo: true, idRol: null, idDocente: null };
+  }
+
+  esRolDocente(idRol: number | null): boolean {
+    const rol = this.sigh.roles().find((r) => r.idRol === idRol);
+    return (rol?.nombre ?? '').toUpperCase() === 'DOCENTE';
+  }
+
+  cambiarRolNuevoUsuario(idRol: number): void {
+    this.nuevoUsuario.idRol = Number(idRol);
+    // Si el rol deja de ser DOCENTE, el vínculo se borra (S-09).
+    if (!this.esRolDocente(this.nuevoUsuario.idRol)) {
+      this.nuevoUsuario.idDocente = null;
+    }
+  }
 
   filtroAuditoria: {
     tablaAfectada: string;
@@ -229,19 +254,33 @@ export class SeguridadModuleOrganismComponent {
   };
 
   crearUsuario(): void {
-    if (!this.nuevoUsuario.nombreUsuario || !this.nuevoUsuario.contrasena) return;
-    this.sigh.crearUsuario({ ...this.nuevoUsuario });
-    this.nuevoUsuario = {
-      nombreUsuario: '',
-      contrasena: '',
-      activo: true,
-      idRol: this.sigh.roles()[0]?.idRol || 1,
-      idDocente: null
-    };
+    const nombreUsuario = (this.nuevoUsuario.nombreUsuario || '').trim();
+    const { contrasena, idRol } = this.nuevoUsuario;
+    if (!nombreUsuario || !contrasena) {
+      this.sigh.showWarning('RF-23 | Faltan datos', 'Escribe el nombre de usuario y la contraseña.');
+      return;
+    }
+    if (!idRol) {
+      this.sigh.showWarning('RF-25 | Falta el rol', 'Selecciona el rol del nuevo usuario.');
+      return;
+    }
+    const esDocente = this.esRolDocente(idRol);
+    if (esDocente && !this.nuevoUsuario.idDocente) {
+      this.sigh.showWarning('S-09 | Falta el docente', 'Un usuario con rol DOCENTE debe vincularse a su registro de docente.');
+      return;
+    }
+    this.sigh.crearUsuario(
+      { ...this.nuevoUsuario, nombreUsuario, idRol, idDocente: esDocente ? this.nuevoUsuario.idDocente : null },
+      () => (this.nuevoUsuario = this.usuarioVacio())
+    );
   }
 
   toggleEstadoUsuario(u: Usuario): void {
     if (!u.idUsuario) return;
+    if (u.idUsuario === this.sigh.activeUser()?.idUsuario) return; // nadie se desactiva a sí mismo
+    if (u.activo && !this.sigh.confirmar(`¿Desactivar al usuario ${u.nombreUsuario}? No podrá iniciar sesión hasta que lo actives de nuevo.`)) {
+      return;
+    }
     this.sigh.actualizarUsuario(u.idUsuario, {
       activo: !u.activo,
       idRol: u.idRol

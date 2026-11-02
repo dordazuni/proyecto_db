@@ -1,175 +1,142 @@
 # Manual de Pruebas Web — Sistema Integrado de Gestión de Horarios (SIGH)
 
-**URL de la Aplicación Web:** [http://18.221.34.127](http://18.221.34.127)  
-**Tecnología del Frontend:** Angular 19 (SPA con Enrutamiento Hash `/#/` y diseño Material Design 3)  
-**Cobertura:** Requerimientos Funcionales (`RF-01` a `RF-25`), Requisitos No Funcionales de Usabilidad/Seguridad (`RNF-01` a `RNF-08`) y 22 Reglas de Negocio en Base de Datos (`RN-01` a `RN-22`).
+**URL de la aplicación web:** [http://18.221.34.127](http://18.221.34.127)  
+**Frontend:** Angular 21 (SPA con enrutamiento hash `/#/`, componentes standalone y Signals)  
+**Cobertura:** requisitos funcionales `RF-01` a `RF-25` (excepto `RF-18`, no implementado en esta entrega), requisitos no funcionales de seguridad y usabilidad, y las 22 reglas de negocio `RN-01` a `RN-22` (19 duras y 3 blandas).
+
+> **Importante antes de probar:** las pruebas que crean, modifican o eliminan datos escriben en la base de la entrega. Antes de la sustentación hay que recargar los scripts `01` a `06` y ejecutar `07` (ver [`source/db/README.MD`](../source/db/README.MD)).
 
 ---
 
-## 1. Matriz de Credenciales y Perfiles de Acceso
+## 1. Usuarios de prueba y módulos por rol
 
-El sistema implementa **Control de Acceso Basado en Roles (RBAC)** tanto en la interfaz de usuario como en PostgreSQL a través de pools dedicados. Todas las opciones no autorizadas están ocultas en la interfaz para cada rol.
+El control de acceso se aplica dos veces: la interfaz oculta lo que el rol no puede usar y PostgreSQL rechaza lo que el rol no tiene permitido (cuatro pools de conexión, uno por rol, script `05`).
 
-| Usuario | Contraseña | Rol SIGH | Módulos Autorizados en la Web | Propósito de Prueba en la Interfaz |
+| Usuario | Contraseña | Rol | Módulos visibles | Qué se prueba |
 | :--- | :--- | :--- | :--- | :--- |
-| `admin` | `123456` | **ADMINISTRADOR** | Resumen, Catálogos, Planeación, Programación, Reportes, Seguridad | Gestión de infraestructura, usuarios, sincronización externa (`RF-17`) y auditoría. |
-| `coordinador` | `123456` | **COORDINADOR** | Resumen, Catálogos, Planeación, Programación, Reportes | Creación de cursos, docentes, secciones, asignación en grilla (`RF-13`/`RF-14`) y envío a aprobación (`RF-15`). |
-| `aprobador` | `123456` | **APROBADOR** | Resumen, Programación, Reportes | Revisión pedagógica de la programación; avalar o devolver versiones (`RF-16`). |
-| `ana.rojas` | `123456` | **DOCENTE** (`idDocente=1`) | Resumen, Planeación (solo Disponibilidad), Reportes (Mi Horario) | Registro de disponibilidad docente propia (`RN-19`) y consulta de horario personal. |
-| `sistema` | *(bloqueado)* | **SISTEMA** | Ninguno (acceso rechazado con `401`) | Usuario técnico reservado para consola; bloqueado en web (`RN-21`). |
+| `admin` | `123456` | **ADMINISTRADOR** | Inicio, Catálogos, Planeación, Programación, Reportes, Seguridad | Períodos, recursos, dotación de espacios y parámetros (CU-01); matrícula real (CU-03); sincronización documental (`RF-17`, CU-04); usuarios y bitácora (CU-02) |
+| `coordinador` | `123456` | **COORDINADOR** | Inicio, Catálogos, Planeación, Programación, Reportes | Cursos, recursos requeridos y habilitación docente (CU-05); secciones y cierres (CU-06); versiones, asignación en grilla y envío a aprobación (CU-07) |
+| `aprobador` | `123456` | **APROBADOR** | Inicio, Programación, Reportes | Avalar o devolver versiones pendientes (`RF-16`, CU-10) |
+| `ana.rojas` | `123456` | **DOCENTE** (vinculada al docente Ana Rojas) | Inicio, Planeación (solo disponibilidad), Reportes (solo su horario) | Su propia disponibilidad (`RF-11`, `RN-19`, CU-09) y su horario publicado (`RF-19`, CU-11) |
+
+También existen los docentes `carlos.mendez` y `andres.torres` (misma contraseña), útiles para comprobar que cada docente ve solo lo suyo. El usuario técnico `sistema` no puede iniciar sesión: su contraseña guardada (`'!'`) no es un hash válido; existe solo para firmar en la bitácora los cambios hechos por script.
+
+> La contraseña `123456` es temporal: el script `06` guarda un marcador y el backend aún no genera el hash definitivo (`RNF-04`).
+
+Los docentes y los espacios son de solo lectura en la aplicación (`RN-19`): se cargan desde los sistemas fuente con el script `06`.
 
 ---
 
-## 2. Casos de Prueba: Autenticación, Sesión y Navegación
+## 2. Autenticación, sesión y navegación
 
-### CP-WEB-01: Protección de Rutas (`authGuard`) y Redirección
-- **Objetivo:** Garantizar que usuarios no autenticados no puedan acceder al sistema.
-- **Pasos:**
-  1. Abrir una pestaña en modo incógnito del navegador.
-  2. Ingresar directamente a la URL: `http://18.221.34.127/#/bienvenida`.
-- **Resultado Esperado:** La aplicación intercepta la navegación y redirige de inmediato a `http://18.221.34.127/#/login`.
+### CP-WEB-01: Protección de rutas (`authGuard`)
+- **Pasos:** abrir una ventana de incógnito y entrar a `http://18.221.34.127/#/bienvenida`.
+- **Resultado esperado:** la aplicación redirige a `/#/login`. Lo mismo ocurre si en el navegador queda un usuario guardado pero no un token.
 
-### CP-WEB-02: Monitor de Salud del Sistema (`/#/conexion`)
-- **Objetivo:** Verificar el estado de la base de datos sin requerir autenticación (`RNF-08`).
-- **Pasos:**
-  1. En la pantalla de inicio de sesión (`/#/login`), hacer clic en el enlace inferior **"Estado de conexión BD"** (o navegar a `/#/conexion`).
-- **Resultado Esperado:** 
-  - La tarjeta muestra estado **`UP`** con badge verde.
-  - Se confirman los parámetros de conexión: motor `PostgreSQL`, base de datos `sigh` y tiempo de respuesta en milisegundos.
-  - El botón "Volver al Login" retorna correctamente.
+### CP-WEB-02: Verificación de conexión al entrar
+- **Pasos:** abrir `http://18.221.34.127/`.
+- **Resultado esperado:** la pantalla inicial comprueba la conexión con la API y la base de datos (`GET /api/echo`) y luego lleva al login (o a la bienvenida, si ya hay sesión). En `http://18.221.34.127/api/echo` se ve el JSON con `"databaseConnected": true`.
 
-### CP-WEB-03: Rechazo de Credenciales Inválidas y Usuario Bloqueado
-- **Objetivo:** Validar la seguridad de acceso (`RF-23`, `RN-21`).
-- **Pasos:**
-  1. Intentar iniciar sesión con usuario `admin` y contraseña incorrecta `password999`.
-  2. Intentar iniciar sesión con usuario `sistema` y contraseña `123456`.
-- **Resultado Esperado:** En ambos casos aparece un aviso flotante rojo de error indicando *"401: Credenciales inválidas"* o usuario no autorizado. No se permite el acceso.
+### CP-WEB-03: Credenciales inválidas
+- **Pasos:** iniciar sesión con `admin` y la contraseña `password999`; luego con `sistema` y `123456`.
+- **Resultado esperado:** en ambos casos aparece el recuadro rojo "Error de Autenticación" con el mensaje de credenciales inválidas y no se entra. El login no muestra contraseñas de ejemplo.
 
-### CP-WEB-04: Persistencia de Sesión al Recargar (`F5`) y Renovación Automática
-- **Objetivo:** Verificar la integridad de la SPA bajo recargas de página y renovación de token JWT.
-- **Pasos:**
-  1. Iniciar sesión como `admin` con contraseña `123456`.
-  2. Navegar a cualquier módulo (por ejemplo, *Catálogos* o *Programación*).
-  3. Presionar la tecla **F5** (o botón refrescar del navegador).
-- **Resultado Esperado:** La página se recarga instantáneamente sin mostrar error `404 Not Found` de Nginx. El usuario permanece autenticado y en la misma vista seleccionada gracias a la validación de sesión en memoria contra Spring Boot.
+### CP-WEB-04: Recarga de la página (`F5`)
+- **Pasos:** iniciar sesión como `admin`, abrir **Programación**, cambiar el período a `2027-1` y presionar **F5**.
+- **Resultado esperado:** no aparece `404` de Nginx; la sesión sigue activa (el token se valida con `GET /api/auth/me`) y se conservan el módulo y el período. La vista se guarda por pestaña: una pestaña nueva empieza en **Inicio**.
 
-### CP-WEB-05: Cierre de Sesión Seguro (`Logout`)
-- **Objetivo:** Verificar la terminación de la sesión en frontend y backend.
-- **Pasos:**
-  1. En el encabezado superior derecho, hacer clic en el botón **"Cerrar Sesión"**.
-- **Resultado Esperado:** 
-  - Se elimina el token del almacenamiento local (`localStorage`).
-  - Se notifica a Spring Boot (`POST /api/auth/logout`) para remover la sesión activa del registro en memoria.
-  - La pantalla retorna a `/#/login`. Si se intenta presionar el botón "Atrás" del navegador, el `authGuard` bloquea el reingreso.
+### CP-WEB-05: Cierre de sesión
+- **Pasos:** hacer clic en **Cerrar Sesión** y luego en el botón **Atrás** del navegador.
+- **Resultado esperado:** se borra el token del navegador, se avisa al backend (`POST /api/auth/logout`) y se limpian todos los datos en pantalla. Al volver atrás, el `authGuard` lleva otra vez al login. Si luego entra otro usuario, empieza en **Inicio** sin ver nada del anterior.
 
 ---
 
-## 3. Casos de Prueba por Rol: Validación de Permisos y Ocultamiento de Opciones
+## 3. Pruebas por rol
 
-### CP-WEB-06: Rol DOCENTE (`ana.rojas`) — Interfaz Restringida y RLS (`RN-19`)
-- **Objetivo:** Comprobar que un docente solo ve lo correspondiente a su carga académica.
-- **Pasos:**
-  1. Iniciar sesión con `ana.rojas` / `123456`.
-  2. Observar el menú lateral de navegación.
-  3. Ingresar al módulo **Planeación**.
-  4. Ingresar al módulo **Reportes**.
-- **Resultados Esperados:**
-  - **Menú Lateral:** Solo son visibles **Resumen**, **Planeación** y **Reportes**. Los módulos *Catálogos*, *Programación* y *Seguridad* están completamente ocultos.
-  - **En Planeación:** La pestaña *Secciones* está oculta. Solo se visualiza la pestaña *Disponibilidad*.
-  - **En Disponibilidad (`RN-19`):** El selector de docente está bloqueado y fijado exclusivamente en **#1 Ana Rojas**. Solo puede registrar o eliminar franjas de su propia disponibilidad.
-  - **En Reportes:** Solo está habilitada la pestaña *RF-19 Horario*. Las pestañas de análisis institucional (*Carga Docente*, *Riesgo de Cierre* y *Alertas*) están ocultas. El horario se precarga automáticamente filtrado para ella.
+### CP-WEB-06: DOCENTE (`ana.rojas`) — disponibilidad propia y horario publicado
+- **Pasos:** entrar con `ana.rojas`, revisar el menú, abrir **Planeación** y después **Reportes** con los períodos `2026-2` y `2027-1`.
+- **Resultados esperados:**
+  - **Menú:** solo **Inicio**, **Planeación** y **Reportes**.
+  - **Planeación:** solo la pestaña de disponibilidad, fija en Ana Rojas. Cada clic en una franja alterna entre `DISPONIBLE` y `NO DISPONIBLE` y se guarda en la base (seguridad por fila, `RN-19`). Al cambiar de período se carga la disponibilidad de ese período.
+  - **Reportes:** solo la pestaña de horario. Se muestra únicamente la **última versión avalada o sincronizada** del período, con un recuadro verde que indica cuál es (en `2026-2`: v1 SINCRONIZADO). En `2027-1`, que solo tiene una versión en edición, aparece el aviso amarillo "aún no tiene un horario avalado ni sincronizado".
 
-### CP-WEB-07: Rol APROBADOR (`aprobador`) — Flujo de Aprobación de Horarios (`RF-16`, `RN-17`)
-- **Objetivo:** Validar que el aprobador solo interviene en versiones en estado `PENDIENTE`.
-- **Pasos:**
-  1. Iniciar sesión con `aprobador` / `123456`.
-  2. Observar el menú lateral.
-  3. Ingresar al módulo **Programación**.
-- **Resultados Esperados:**
-  - **Menú Lateral:** Solo aparecen **Resumen**, **Programación** y **Reportes**.
-  - **En Programación:**
-    - El botón *RF-12 Nueva Versión* está oculto (solo lo crea el Coordinador).
-    - El formulario de *Asignar Sesión* (`RF-13`) y la edición de la grilla están ocultos y bloqueados en modo solo lectura (`editable = false`).
-    - En el selector de versión, seleccionar una versión en estado `PENDIENTE`.
-    - Aparecen habilitados únicamente los botones: **"RF-16 Avalar Versión (Aprobador)"** y **"RF-16 Devolver a Edición"**.
-    - Si se selecciona una versión en estado `EN_EDICION` o `AVALADO`, los botones de aprobación no aparecen.
+### CP-WEB-07: APROBADOR (`aprobador`) — aval de versiones (`RF-16`, `RN-17`)
+- **Pasos:** entrar con `aprobador` y abrir **Programación**.
+- **Resultados esperados:**
+  - **Menú:** solo **Inicio**, **Programación** y **Reportes**.
+  - No aparecen el botón *Nueva Versión* ni el formulario *Asignar Sesión*; la grilla es de solo lectura.
+  - Con una versión `PENDIENTE` seleccionada aparecen solo **Avalar Versión** y **Devolver a Edición**. Con versiones en otros estados no aparecen.
 
-### CP-WEB-08: Rol COORDINADOR (`coordinador`) — Flujo Completo de Programación
-- **Objetivo:** Verificar la programación de horarios, arrastrar y soltar (Drag & Drop) y transición de estados (`RF-12` a `RF-15`).
+### CP-WEB-08: COORDINADOR (`coordinador`) — planeación y programación
 - **Pasos:**
-  1. Iniciar sesión con `coordinador` / `123456`.
-  2. Ir al módulo **Programación**.
-  3. Clic en **"RF-12 Nueva Versión (EN_EDICION)"**.
-  4. Programar una sesión mediante el formulario *Asignar Sesión* (`RF-13`) seleccionando Sección, Docente, Espacio y Franja.
-  5. En la grilla interactiva, arrastrar una tarjeta de clase asignada hacia otra franja horaria vacía (Drag & Drop — `RF-14`).
-  6. Hacer clic en el botón **"RF-15 Enviar a Aprobación"**.
-- **Resultados Esperados:**
-  - La nueva versión se crea en estado `EN_EDICION`.
-  - La sesión se inserta en la base de datos validando en tiempo real las 19 reglas duras de PostgreSQL (sin cruces).
-  - Al soltar la sesión en otra franja, la interfaz actualiza la posición (`UPDATE asignacion`).
-  - Al dar clic en *Enviar a Aprobación*, el chip de estado cambia inmediatamente a **`PENDIENTE`** y los controles de edición de la grilla se bloquean automáticamente (`RN-16: Versión PENDIENTE es inmutable`).
-  - El botón *RF-16 Avalar Versión* **no** es visible para el Coordinador.
+  1. En **Planeación**, abrir una sección nueva y registrar su matrícula real.
+  2. En **Programación**, crear una versión (**Nueva Versión**), asignar una sesión eligiendo sección, docente, espacio y franja, arrastrar una sesión a otra franja y eliminar otra.
+  3. Hacer clic en **Enviar a Aprobación**.
+- **Resultados esperados:**
+  - El campo de matrícula real está vacío si la sección no tiene dato; si se guarda vacío aparece un aviso y no se envía nada. Cerrar una sección pide confirmación y no hay opción de reabrirla (`RF-10`).
+  - El formulario de asignación ofrece solo secciones **abiertas** (`RN-11`).
+  - Cada asignación pasa por las reglas duras en la base (`RN-01` a `RN-09` y `RN-11` a `RN-16`); si alguna falla, aparece un aviso rojo con el código de la regla y la grilla no cambia.
+  - Eliminar una sesión pide confirmación.
+  - Al enviar a aprobación, la versión pasa a `PENDIENTE` y la grilla queda bloqueada (`RN-16`). El coordinador no ve los botones de aval.
+  - Si la base rechaza un formulario (por ejemplo, un curso con código repetido), los datos escritos se conservan para corregirlos.
 
-### CP-WEB-09: Rol ADMINISTRADOR (`admin`) — Sincronización Externa y Seguridad (`RF-17`, `RF-23`, `RF-24`)
-- **Objetivo:** Verificar la sincronización final del horario y las funciones de auditoría.
+### CP-WEB-09: ADMINISTRADOR (`admin`) — sincronización, usuarios y bitácora
 - **Pasos:**
-  1. Iniciar sesión con `admin` / `123456`.
-  2. Ir al módulo **Programación** y seleccionar una versión en estado `AVALADO`.
-  3. Ingresar un código de documento externo (ej. `DOC-EXT-2026-FINAL`) y hacer clic en **"RF-17 Sincronizar"**.
-  4. Ir al módulo **Seguridad**.
-  5. Revisar la pestaña **Usuarios** y la pestaña **Bitácora de Auditoría** (`RF-24`).
-- **Resultados Esperados:**
-  - En Programación, el estado de la versión pasa a **`SINCRONIZADO`** con su documento externo asociado.
-  - En Seguridad / Usuarios: El usuario técnico `sistema` aparece con el indicador **"Sistema técnico (bloqueado)"** sin botón de desactivación.
-  - En Seguridad / Bitácora: Se muestran en tiempo real las inserciones, modificaciones y eliminaciones registradas por los disparadores inmutables de PostgreSQL (`RN-18`), mostrando usuario, tabla afectada, acción y fecha/hora exacta.
+  1. En **Programación**, seleccionar una versión `AVALADO`, escribir el identificador del documento externo y hacer clic en **Sincronizar**.
+  2. En **Seguridad**, revisar **Usuarios** y **Bitácora**.
+- **Resultados esperados:**
+  - La versión pasa a `SINCRONIZADO` con su documento externo. Sin identificador aparece un aviso y no se envía nada (`RN-17`).
+  - **Usuarios:** el rol empieza sin elegir; el campo de docente aparece solo con el rol `DOCENTE`, es obligatorio y lista solo docentes sin usuario (`S-09`). El usuario `sistema` aparece como "Sistema técnico (bloqueado)" y el usuario en sesión como "Tu usuario (no se desactiva)". Desactivar a otro usuario pide confirmación.
+  - **Bitácora (`RF-24`, `RN-18`):** muestra los cambios en `asignacion` y `version_horario` con usuario, acción, tabla y fecha. Se puede filtrar por esas dos tablas, por acción y por usuario.
 
 ---
 
-## 4. Casos de Prueba: Validación de Reglas de Negocio en la Interfaz Web
+## 4. Reglas de negocio en la interfaz
 
-Al intentar realizar una asignación en **Programación**, la base de datos PostgreSQL ejecuta sus disparadores (`source/db/03_triggers_funciones.sql`). El frontend captura el error y despliega un diálogo emergente claro con el código de regla violado:
+Al asignar o mover una sesión en **Programación**, la base de datos valida las reglas con restricciones y disparadores (`source/db/01_ddl.sql` y `source/db/03_funciones_triggers.sql`). La interfaz muestra un aviso rojo con el código de la regla en el título y un mensaje legible.
 
-| Caso | Acción en la Web | Regla Evaluada | Comportamiento Esperado en Pantalla |
+| Caso | Acción en la web | Regla | Aviso esperado |
 | :--- | :--- | :--- | :--- |
-| **CP-RN-01** | Asignar al docente `#1 Ana Rojas` en una franja donde ya tiene otra clase programada. | `RN-01: Cruce de horario docente` | Aviso rojo: *"Violación de regla RN-01: El docente ya tiene una sesión asignada en este día y franja."* La grilla no se altera. |
-| **CP-RN-02** | Asignar una clase en el espacio `#1 Salón 101` cuando ya está ocupado en esa franja. | `RN-02: Cruce de espacio físico` | Aviso rojo: *"Violación de regla RN-02: El espacio físico ya se encuentra ocupado en esta franja horaria."* |
-| **CP-RN-03** | Asignar dos sesiones de la misma sección en la misma franja. | `RN-03: Cruce de sección` | Aviso rojo: *"Violación de regla RN-03: La sección ya tiene clase en este horario."* |
-| **CP-RN-04** | Asignar la sección `#1` (cupo proyectado 30) al espacio `#2 Laboratorio Redes` (capacidad 20). | `RN-04: Capacidad y Aforo` | Aviso de error de regla de aforo: el cupo de la sección supera la capacidad máxima del espacio físico. |
-| **CP-RN-05** | Intentar asignar una sesión a un docente que ya completó las horas máximas de su contrato. | `RN-05: Límite máximo de contrato` | Aviso rojo: *"Violación de regla RN-05: Se supera el tope de horas semanales permitidas por su tipo de contrato."* |
-| **CP-RN-12** | Asignar al docente `#1` a un curso que no tiene registrado en la tabla de habilitación (`docente_curso`). | `RN-12: Habilitación docente` | Aviso de error: *"Violación de regla RN-12: El docente no está habilitado para dictar este curso."* |
-| **CP-RN-13** | Asignar al docente en una franja donde registró `NO_DISPONIBLE` en el módulo de disponibilidad. | `RN-13: Disponibilidad docente` | Aviso de error: *"Violación de regla RN-13: El docente marcó esta franja horaria como no disponible."* |
-| **CP-RN-16** | Intentar mover o eliminar una sesión en una versión en estado `AVALADO` o `SINCRONIZADO`. | `RN-16: Inmutabilidad de versión` | La interfaz desactiva los controles de arrastre y borrado. Si se fuerza la petición, el backend responde con error de inmutabilidad. |
+| **CP-RN-01** | Asignar a un docente en una franja donde ya tiene sesión en la misma versión | `RN-01` | "El docente ya tiene otra sesión en esa franja de esta versión." |
+| **CP-RN-02** | Asignar un espacio ya ocupado en esa franja | `RN-02` | "El espacio ya está ocupado en esa franja de esta versión." |
+| **CP-RN-03** | Asignar dos sesiones de la misma sección en la misma franja | `RN-03` | "La sección ya tiene otra sesión en esa franja de esta versión." |
+| **CP-RN-04** | Asignar una sección cuya matrícula supera la capacidad del espacio | `RN-04` | "La matrícula de la sección (…) supera la capacidad del espacio …" |
+| **CP-RN-05** | Asignar a un docente que ya llegó a las horas máximas de su contrato | `RN-05` | "El docente … pasaría a … horas y su contrato permite …" |
+| **CP-RN-09** | Agregar a una sección más sesiones que la frecuencia semanal de su curso | `RN-09` | "La sección … ya tiene … sesiones y su curso tiene frecuencia …" |
+| **CP-RN-12** | Asignar a un docente no habilitado para el curso | `RN-12` | "El docente … no está habilitado para dictar el curso …" |
+| **CP-RN-13** | Asignar a un docente en una franja que marcó como no disponible | `RN-13` | "El docente … no está disponible en la franja …" |
+| **CP-RN-14** | Asignar un curso a un espacio sin los recursos que requiere | `RN-14` | "El espacio … no ofrece todos los recursos que requiere el curso …" |
+| **CP-RN-16** | Intentar cambiar una versión que no está `EN_EDICION` | `RN-16` | La grilla bloquea arrastrar y borrar; si se fuerza por la API, la base responde "la versión … está …; sus asignaciones no se modifican ni se borran". |
+
+Las franjas ya cumplen `RN-06` a `RN-08` por construcción: en la grilla, la zona muerta de 12:00 a 13:00 cubre solo de lunes a viernes, las celdas de las 11:00 de lunes a viernes indican que cruzarían esa zona (`RN-06`) y las del sábado por la tarde quedan fuera de la ventana operativa (`RN-07`).
 
 ---
 
-## 5. Casos de Prueba: Módulo de Reportes Institucionales
+## 5. Reportes (`coordinador` o `admin`)
 
-Con el usuario `coordinador` o `admin`, ingresar al módulo **Reportes**:
+### CP-REP-01: Horario por docente, espacio y sección (`RF-19`)
+- **Pasos:** elegir una versión y filtrar por docente, por espacio y por sección.
+- **Resultado:** la grilla y la tabla muestran solo las sesiones que cumplen el filtro. Al cambiar de período o de versión los filtros se limpian. Si el período no tiene versiones, aparece un aviso y los reportes quedan vacíos.
 
-### CP-REP-01: Horario Multicriterio (`RF-19`)
-- **Pasos:** Seleccionar una versión de horario y filtrar sucesivamente por: *Docente*, luego por *Espacio Físico* y luego por *Sección*.
-- **Resultado:** La grilla semanal y la tabla inferior se recalculan al instante reflejando únicamente las sesiones que coinciden con los filtros aplicados.
+### CP-REP-02: Carga docente frente al contrato (`RF-20`, `RN-05`, `RN-22`)
+- **Pasos:** abrir **RF-20 Carga Docente** y filtrar por estado.
+- **Resultado:** los estados son `BAJO_MINIMO` (chip amarillo, regla blanda `RN-22`), `EN_RANGO` (verde) y `SOBRE_MAXIMO` (rojo; no debería aparecer nunca porque `RN-05` lo impide).
 
-### CP-REP-02: Carga Docente vs Contrato (`RF-20`, `RN-05`, `RN-22`)
-- **Pasos:** Hacer clic en la pestaña **"RF-20 Carga Docente"**. Utilizar el filtro de estado de carga para seleccionar `BAJO_MINIMO`.
-- **Resultado:** Se listan los docentes que no alcanzan el mínimo de horas de su contrato con chip amarillo de alerta pedagógica (`RN-22`). Aquellos en rango aparecen con chip verde.
+### CP-REP-03: Secciones en riesgo de cierre (`RF-21`, `RN-21`)
+- **Pasos:** abrir **RF-21 Secciones en Riesgo de Cierre**.
+- **Resultado:** se listan las secciones con matrícula real menor que el cupo mínimo (`P-03`). El coordinador ve el botón **Cerrar Sección**, que pide confirmación.
 
-### CP-REP-03: Secciones en Riesgo de Cierre (`RF-21`, `RN-21`)
-- **Pasos:** Hacer clic en la pestaña **"RF-21 Secciones en Riesgo de Cierre"**.
-- **Resultado:** Se presentan aquellas secciones cuya matrícula real es inferior al parámetro `P-03 (Cupo Mínimo)`. El rol `coordinador` tiene visible el botón rojo **"Cerrar Sección (RF-10)"** para dar de baja la sección si la matrícula no es viable.
-
-### CP-REP-04: Sesiones Faltantes y Días Consecutivos (`RF-22`, `RN-09`, `RN-20`)
-- **Pasos:** Hacer clic en la pestaña **"RF-22 Sesiones Faltantes y Días Consecutivos"**.
-- **Resultado:**
-  - **Tabla 1:** Muestra qué secciones tienen menos sesiones programadas que la frecuencia semanal requerida por su plan de estudios (`RN-09`).
-  - **Tabla 2:** Alerta pedagógica de cursos que tienen sesiones programadas en días continuos (ej. Lunes y Martes) para evitar sobrecarga del estudiante (`RN-20`).
+### CP-REP-04: Sesiones faltantes y días consecutivos (`RF-22`, `RN-09`, `RN-20`)
+- **Pasos:** abrir **RF-22 Sesiones Faltantes y Días Consecutivos**.
+- **Resultado:** la primera tabla muestra las secciones con menos sesiones que la frecuencia de su curso; la segunda, los cursos con sesiones en días seguidos (regla blanda `RN-20`).
 
 ---
 
-## 6. Lista de Chequeo Final de Entrega (Checklist de Sustentación)
+## 6. Lista de chequeo para la sustentación
 
-- [ ] **Acceso Web:** `http://18.221.34.127/` abre la pantalla de inicio de sesión sin errores de consola.
-- [ ] **Rutas Directas:** La URL directa `http://18.221.34.127/#/conexion` responde con estado `UP`.
-- [ ] **Aislamiento por Rol:** Cada usuario (`admin`, `coordinador`, `aprobador`, `ana.rojas`) ve únicamente sus módulos correspondientes.
-- [ ] **Reglas de Negocio en Vivo:** Al provocar un cruce de horario en la grilla, la aplicación muestra la alerta correspondiente (`RN-01` a `RN-16`) sin congelar la pantalla.
-- [ ] **Auditoría Activa:** Toda acción de asignación o cambio de estado de versión queda registrada de forma visible e inmutable en el módulo de Seguridad.
+- [ ] Se recargaron los scripts `01` a `06` y se ejecutó `07` sin errores.
+- [ ] `http://18.221.34.127/` abre la aplicación sin errores en la consola del navegador.
+- [ ] `http://18.221.34.127/api/echo` responde `"databaseConnected": true`.
+- [ ] Cada usuario (`admin`, `coordinador`, `aprobador`, `ana.rojas`) ve solo sus módulos.
+- [ ] Al provocar un cruce en la grilla aparece el aviso con su regla (`RN-01` a `RN-16`) sin congelar la pantalla.
+- [ ] Toda asignación y todo cambio de estado de versión aparecen en la bitácora de **Seguridad**.
