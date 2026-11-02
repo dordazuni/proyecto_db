@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "9f8c2a10-4b3e-4d9a-8c11-2e5b7a9d0001",
     "name": "SIGH - API Gestión de Horarios (RF-01 a RF-25 | JWT & Roles BD)",
-    "description": "Colección actualizada para probar todos los endpoints MVC del Sistema Integrado de Gestión de Horarios (SIGH) en Apidog o Postman con autenticación Bearer JWT, enrutamiento de conexión PostgreSQL por rol (RNF-04) y trazabilidad de usuario en bitácora (RF-24).\n\nVariables de colección:\n- `baseUrl`: `http://18.221.34.127/api` (también funciona `http://18.221.34.127:8080/api` o `http://localhost:8080/api`)\n- `token`: Token JWT devuelto por `POST /auth/login` (se actualiza automáticamente al ejecutar cualquiera de las peticiones de Login en la carpeta `00`).",
+    "description": "Colección actualizada para probar todos los endpoints del Sistema Integrado de Gestión de Horarios (SIGH) en Apidog o Postman con autenticación Bearer JWT, renovación segura de tokens, ingesta de sistemas fuente (CU-03) y seguridad por rol (RNF-04).\n\nVariables de colección:\n- `baseUrl`: `http://18.221.34.127/api` (vía Nginx en puerto 80) o `http://localhost:8080/api` (desarrollo local)\n- `token`: Token JWT devuelto por `POST /auth/login` o `POST /auth/refresh` (se actualiza automáticamente al ejecutar Login o Refresh).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -42,8 +42,12 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/echo",
-              "host": ["{{baseUrl}}"],
-              "path": ["echo"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "echo"
+              ]
             }
           }
         },
@@ -72,7 +76,10 @@
             },
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -80,8 +87,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/auth/login",
-              "host": ["{{baseUrl}}"],
-              "path": ["auth", "login"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
             }
           }
         },
@@ -110,7 +122,10 @@
             },
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -118,8 +133,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/auth/login",
-              "host": ["{{baseUrl}}"],
-              "path": ["auth", "login"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
             }
           }
         },
@@ -148,7 +168,10 @@
             },
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -156,8 +179,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/auth/login",
-              "host": ["{{baseUrl}}"],
-              "path": ["auth", "login"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
             }
           }
         },
@@ -186,7 +214,10 @@
             },
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -194,8 +225,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/auth/login",
-              "host": ["{{baseUrl}}"],
-              "path": ["auth", "login"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
             }
           }
         },
@@ -207,7 +243,10 @@
             },
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -215,8 +254,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/auth/login",
-              "host": ["{{baseUrl}}"],
-              "path": ["auth", "login"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
             }
           }
         },
@@ -225,12 +269,111 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/auth/me",
-              "host": ["{{baseUrl}}"],
-              "path": ["auth", "me"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            }
+          }
+        },
+        {
+          "name": "RF-23 | POST /auth/refresh - Renovar token de sesión (Bearer en cabecera y cuerpo vacío)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData && jsonData.token) {",
+                  "        pm.collectionVariables.set('token', jsonData.token);",
+                  "        pm.environment.set('token', jsonData.token);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "refresh"
+              ]
+            }
+          }
+        },
+        {
+          "name": "RF-23 | POST /auth/logout - Cerrar sesión activa",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
+            }
+          }
+        },
+        {
+          "name": "RF-23 | GET /auth/sessions - Listar sesiones activas (Solo ADMINISTRADOR - Sin tokens)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "sessions"
+              ]
             }
           }
         }
@@ -244,12 +387,19 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/periodos",
-              "host": ["{{baseUrl}}"],
-              "path": ["periodos"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "periodos"
+              ]
             }
           }
         },
@@ -258,12 +408,20 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/periodos/1",
-              "host": ["{{baseUrl}}"],
-              "path": ["periodos", "1"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "periodos",
+                "1"
+              ]
             }
           }
         },
@@ -272,8 +430,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -281,8 +445,12 @@
             },
             "url": {
               "raw": "{{baseUrl}}/periodos",
-              "host": ["{{baseUrl}}"],
-              "path": ["periodos"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "periodos"
+              ]
             }
           }
         },
@@ -291,8 +459,14 @@
           "request": {
             "method": "PUT",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -300,8 +474,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/periodos/1",
-              "host": ["{{baseUrl}}"],
-              "path": ["periodos", "1"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "periodos",
+                "1"
+              ]
             }
           }
         },
@@ -310,12 +489,19 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/tipos-contrato",
-              "host": ["{{baseUrl}}"],
-              "path": ["tipos-contrato"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tipos-contrato"
+              ]
             }
           }
         },
@@ -324,12 +510,19 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/docentes",
-              "host": ["{{baseUrl}}"],
-              "path": ["docentes"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "docentes"
+              ]
             }
           }
         },
@@ -338,50 +531,50 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/docentes/1",
-              "host": ["{{baseUrl}}"],
-              "path": ["docentes", "1"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "docentes",
+                "1"
+              ]
             }
           }
         },
         {
-          "name": "RF-02 | Crear docente",
+          "name": "RF-02 / CU-03 | POST /integracion/docentes - Ingesta de docente desde sistema fuente (Talento Humano)",
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"documento\": \"1020304050\",\n  \"nombre\": \"Jorge Iván Soto\",\n  \"correo\": \"jorge.soto@unbosque.edu.co\",\n  \"activo\": true,\n  \"idTipoContrato\": 1\n}"
+              "raw": "{\n  \"tipoDocumento\": \"CC\",\n  \"numeroDocumento\": \"1009\",\n  \"nombres\": \"Pedro\",\n  \"apellidos\": \"Gómez\",\n  \"email\": \"pedro.gomez@ejemplo.edu\",\n  \"nombreTipoContrato\": \"MEDIO TIEMPO\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/docentes",
-              "host": ["{{baseUrl}}"],
-              "path": ["docentes"]
-            }
-          }
-        },
-        {
-          "name": "RF-02 | Actualizar docente",
-          "request": {
-            "method": "PUT",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"documento\": \"10000001\",\n  \"nombre\": \"Ana María Rojas\",\n  \"correo\": \"ana.rojas@unbosque.edu.co\",\n  \"activo\": true,\n  \"idTipoContrato\": 1\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/docentes/1",
-              "host": ["{{baseUrl}}"],
-              "path": ["docentes", "1"]
+              "raw": "{{baseUrl}}/integracion/docentes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "integracion",
+                "docentes"
+              ]
             }
           }
         },
@@ -390,12 +583,19 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/espacios",
-              "host": ["{{baseUrl}}"],
-              "path": ["espacios"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "espacios"
+              ]
             }
           }
         },
@@ -404,50 +604,50 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/espacios/1",
-              "host": ["{{baseUrl}}"],
-              "path": ["espacios", "1"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "espacios",
+                "1"
+              ]
             }
           }
         },
         {
-          "name": "RF-03 | Crear espacio físico",
+          "name": "RF-03 / CU-03 | POST /integracion/espacios - Ingesta de espacio físico desde sistema fuente (Planta Física)",
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"codigo\": \"A-305\",\n  \"nombre\": \"Aula 305 Bloque A\",\n  \"tipo\": \"AULA\",\n  \"capacidad\": 40,\n  \"activo\": true\n}"
+              "raw": "{\n  \"codigo\": \"A-301\",\n  \"nombre\": \"Aula 301\",\n  \"capacidad\": 40,\n  \"edificio\": \"Bloque A\",\n  \"tipoEspacio\": \"AULA\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/espacios",
-              "host": ["{{baseUrl}}"],
-              "path": ["espacios"]
-            }
-          }
-        },
-        {
-          "name": "RF-03 | Actualizar espacio físico",
-          "request": {
-            "method": "PUT",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"codigo\": \"A-101\",\n  \"nombre\": \"Aula 101 Bloque A\",\n  \"tipo\": \"AULA\",\n  \"capacidad\": 40,\n  \"activo\": true\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/espacios/1",
-              "host": ["{{baseUrl}}"],
-              "path": ["espacios", "1"]
+              "raw": "{{baseUrl}}/integracion/espacios",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "integracion",
+                "espacios"
+              ]
             }
           }
         },
@@ -456,12 +656,19 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/recursos",
-              "host": ["{{baseUrl}}"],
-              "path": ["recursos"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "recursos"
+              ]
             }
           }
         },
@@ -470,8 +677,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -479,8 +692,12 @@
             },
             "url": {
               "raw": "{{baseUrl}}/recursos",
-              "host": ["{{baseUrl}}"],
-              "path": ["recursos"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "recursos"
+              ]
             }
           }
         },
@@ -489,8 +706,14 @@
           "request": {
             "method": "PUT",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -498,8 +721,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/recursos/1",
-              "host": ["{{baseUrl}}"],
-              "path": ["recursos", "1"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "recursos",
+                "1"
+              ]
             }
           }
         },
@@ -508,12 +736,21 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/espacios/1/recursos",
-              "host": ["{{baseUrl}}"],
-              "path": ["espacios", "1", "recursos"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "espacios",
+                "1",
+                "recursos"
+              ]
             }
           }
         },
@@ -522,8 +759,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -531,8 +774,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/espacios/1/recursos",
-              "host": ["{{baseUrl}}"],
-              "path": ["espacios", "1", "recursos"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "espacios",
+                "1",
+                "recursos"
+              ]
             }
           }
         },
@@ -541,8 +790,14 @@
           "request": {
             "method": "PUT",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -550,8 +805,15 @@
             },
             "url": {
               "raw": "{{baseUrl}}/espacios/1/recursos/1",
-              "host": ["{{baseUrl}}"],
-              "path": ["espacios", "1", "recursos", "1"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "espacios",
+                "1",
+                "recursos",
+                "1"
+              ]
             }
           }
         },
@@ -560,12 +822,22 @@
           "request": {
             "method": "DELETE",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/espacios/1/recursos/1",
-              "host": ["{{baseUrl}}"],
-              "path": ["espacios", "1", "recursos", "1"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "espacios",
+                "1",
+                "recursos",
+                "1"
+              ]
             }
           }
         },
@@ -574,12 +846,19 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/cursos",
-              "host": ["{{baseUrl}}"],
-              "path": ["cursos"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cursos"
+              ]
             }
           }
         },
@@ -588,12 +867,20 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/cursos/1",
-              "host": ["{{baseUrl}}"],
-              "path": ["cursos", "1"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cursos",
+                "1"
+              ]
             }
           }
         },
@@ -602,8 +889,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -611,8 +904,12 @@
             },
             "url": {
               "raw": "{{baseUrl}}/cursos",
-              "host": ["{{baseUrl}}"],
-              "path": ["cursos"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cursos"
+              ]
             }
           }
         },
@@ -621,8 +918,14 @@
           "request": {
             "method": "PUT",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -630,8 +933,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/cursos/1",
-              "host": ["{{baseUrl}}"],
-              "path": ["cursos", "1"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cursos",
+                "1"
+              ]
             }
           }
         },
@@ -640,12 +948,21 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/cursos/1/recursos",
-              "host": ["{{baseUrl}}"],
-              "path": ["cursos", "1", "recursos"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cursos",
+                "1",
+                "recursos"
+              ]
             }
           }
         },
@@ -654,8 +971,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -663,8 +986,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/cursos/1/recursos",
-              "host": ["{{baseUrl}}"],
-              "path": ["cursos", "1", "recursos"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cursos",
+                "1",
+                "recursos"
+              ]
             }
           }
         },
@@ -673,12 +1002,22 @@
           "request": {
             "method": "DELETE",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/cursos/1/recursos/1",
-              "host": ["{{baseUrl}}"],
-              "path": ["cursos", "1", "recursos", "1"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cursos",
+                "1",
+                "recursos",
+                "1"
+              ]
             }
           }
         },
@@ -687,12 +1026,21 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/docentes/1/cursos",
-              "host": ["{{baseUrl}}"],
-              "path": ["docentes", "1", "cursos"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "docentes",
+                "1",
+                "cursos"
+              ]
             }
           }
         },
@@ -701,12 +1049,21 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/cursos/1/docentes",
-              "host": ["{{baseUrl}}"],
-              "path": ["cursos", "1", "docentes"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cursos",
+                "1",
+                "docentes"
+              ]
             }
           }
         },
@@ -715,8 +1072,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -724,8 +1087,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/docentes/1/cursos",
-              "host": ["{{baseUrl}}"],
-              "path": ["docentes", "1", "cursos"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "docentes",
+                "1",
+                "cursos"
+              ]
             }
           }
         },
@@ -734,12 +1103,22 @@
           "request": {
             "method": "DELETE",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/docentes/1/cursos/1",
-              "host": ["{{baseUrl}}"],
-              "path": ["docentes", "1", "cursos", "1"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "docentes",
+                "1",
+                "cursos",
+                "1"
+              ]
             }
           }
         },
@@ -748,12 +1127,19 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/franjas",
-              "host": ["{{baseUrl}}"],
-              "path": ["franjas"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "franjas"
+              ]
             }
           }
         },
@@ -762,12 +1148,20 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/franjas/1",
-              "host": ["{{baseUrl}}"],
-              "path": ["franjas", "1"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "franjas",
+                "1"
+              ]
             }
           }
         },
@@ -776,8 +1170,14 @@
           "request": {
             "method": "PUT",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -785,8 +1185,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/franjas/1",
-              "host": ["{{baseUrl}}"],
-              "path": ["franjas", "1"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "franjas",
+                "1"
+              ]
             }
           }
         },
@@ -795,12 +1200,19 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/parametros",
-              "host": ["{{baseUrl}}"],
-              "path": ["parametros"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "parametros"
+              ]
             }
           }
         },
@@ -809,8 +1221,14 @@
           "request": {
             "method": "PUT",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -818,8 +1236,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/parametros/CUPO_ESTANDAR",
-              "host": ["{{baseUrl}}"],
-              "path": ["parametros", "CUPO_ESTANDAR"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "parametros",
+                "CUPO_ESTANDAR"
+              ]
             }
           }
         }
@@ -833,15 +1256,29 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/secciones?idPeriodo=1",
-              "host": ["{{baseUrl}}"],
-              "path": ["secciones"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "secciones"
+              ],
               "query": [
-                { "key": "idPeriodo", "value": "1" },
-                { "key": "idCurso", "value": "1", "disabled": true }
+                {
+                  "key": "idPeriodo",
+                  "value": "1"
+                },
+                {
+                  "key": "idCurso",
+                  "value": "1",
+                  "disabled": true
+                }
               ]
             }
           }
@@ -851,12 +1288,20 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/secciones/1",
-              "host": ["{{baseUrl}}"],
-              "path": ["secciones", "1"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "secciones",
+                "1"
+              ]
             }
           }
         },
@@ -865,8 +1310,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -874,8 +1325,12 @@
             },
             "url": {
               "raw": "{{baseUrl}}/secciones",
-              "host": ["{{baseUrl}}"],
-              "path": ["secciones"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "secciones"
+              ]
             }
           }
         },
@@ -884,8 +1339,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -893,8 +1354,12 @@
             },
             "url": {
               "raw": "{{baseUrl}}/secciones",
-              "host": ["{{baseUrl}}"],
-              "path": ["secciones"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "secciones"
+              ]
             }
           }
         },
@@ -903,8 +1368,14 @@
           "request": {
             "method": "PUT",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -912,8 +1383,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/secciones/1",
-              "host": ["{{baseUrl}}"],
-              "path": ["secciones", "1"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "secciones",
+                "1"
+              ]
             }
           }
         },
@@ -922,8 +1398,14 @@
           "request": {
             "method": "PATCH",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -931,8 +1413,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/secciones/1/matricula-real",
-              "host": ["{{baseUrl}}"],
-              "path": ["secciones", "1", "matricula-real"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "secciones",
+                "1",
+                "matricula-real"
+              ]
             }
           }
         },
@@ -941,12 +1429,21 @@
           "request": {
             "method": "PATCH",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/secciones/1/cerrar",
-              "host": ["{{baseUrl}}"],
-              "path": ["secciones", "1", "cerrar"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "secciones",
+                "1",
+                "cerrar"
+              ]
             }
           }
         },
@@ -955,15 +1452,28 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/disponibilidad?idDocente=1&idPeriodo=1",
-              "host": ["{{baseUrl}}"],
-              "path": ["disponibilidad"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "disponibilidad"
+              ],
               "query": [
-                { "key": "idDocente", "value": "1" },
-                { "key": "idPeriodo", "value": "1" }
+                {
+                  "key": "idDocente",
+                  "value": "1"
+                },
+                {
+                  "key": "idPeriodo",
+                  "value": "1"
+                }
               ]
             }
           }
@@ -973,8 +1483,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -982,8 +1498,12 @@
             },
             "url": {
               "raw": "{{baseUrl}}/disponibilidad",
-              "host": ["{{baseUrl}}"],
-              "path": ["disponibilidad"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "disponibilidad"
+              ]
             }
           }
         },
@@ -992,16 +1512,32 @@
           "request": {
             "method": "DELETE",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/disponibilidad?idDocente=1&idPeriodo=1&idFranja=1",
-              "host": ["{{baseUrl}}"],
-              "path": ["disponibilidad"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "disponibilidad"
+              ],
               "query": [
-                { "key": "idDocente", "value": "1" },
-                { "key": "idPeriodo", "value": "1" },
-                { "key": "idFranja", "value": "1" }
+                {
+                  "key": "idDocente",
+                  "value": "1"
+                },
+                {
+                  "key": "idPeriodo",
+                  "value": "1"
+                },
+                {
+                  "key": "idFranja",
+                  "value": "1"
+                }
               ]
             }
           }
@@ -1016,14 +1552,24 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/versiones?idPeriodo=1",
-              "host": ["{{baseUrl}}"],
-              "path": ["versiones"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "versiones"
+              ],
               "query": [
-                { "key": "idPeriodo", "value": "1" }
+                {
+                  "key": "idPeriodo",
+                  "value": "1"
+                }
               ]
             }
           }
@@ -1033,12 +1579,20 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/versiones/1",
-              "host": ["{{baseUrl}}"],
-              "path": ["versiones", "1"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "versiones",
+                "1"
+              ]
             }
           }
         },
@@ -1047,8 +1601,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -1056,8 +1616,12 @@
             },
             "url": {
               "raw": "{{baseUrl}}/versiones",
-              "host": ["{{baseUrl}}"],
-              "path": ["versiones"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "versiones"
+              ]
             }
           }
         },
@@ -1066,14 +1630,24 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/asignaciones?idVersion=1",
-              "host": ["{{baseUrl}}"],
-              "path": ["asignaciones"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "asignaciones"
+              ],
               "query": [
-                { "key": "idVersion", "value": "1" }
+                {
+                  "key": "idVersion",
+                  "value": "1"
+                }
               ]
             }
           }
@@ -1083,8 +1657,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -1092,8 +1672,12 @@
             },
             "url": {
               "raw": "{{baseUrl}}/asignaciones",
-              "host": ["{{baseUrl}}"],
-              "path": ["asignaciones"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "asignaciones"
+              ]
             }
           }
         },
@@ -1102,8 +1686,14 @@
           "request": {
             "method": "PUT",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -1111,8 +1701,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/asignaciones/1",
-              "host": ["{{baseUrl}}"],
-              "path": ["asignaciones", "1"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "asignaciones",
+                "1"
+              ]
             }
           }
         },
@@ -1121,12 +1716,20 @@
           "request": {
             "method": "DELETE",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/asignaciones/1",
-              "host": ["{{baseUrl}}"],
-              "path": ["asignaciones", "1"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "asignaciones",
+                "1"
+              ]
             }
           }
         },
@@ -1135,8 +1738,14 @@
           "request": {
             "method": "PATCH",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -1144,8 +1753,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/versiones/1/enviar-aprobacion",
-              "host": ["{{baseUrl}}"],
-              "path": ["versiones", "1", "enviar-aprobacion"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "versiones",
+                "1",
+                "enviar-aprobacion"
+              ]
             }
           }
         },
@@ -1154,8 +1769,14 @@
           "request": {
             "method": "PATCH",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -1163,8 +1784,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/versiones/1/avalar",
-              "host": ["{{baseUrl}}"],
-              "path": ["versiones", "1", "avalar"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "versiones",
+                "1",
+                "avalar"
+              ]
             }
           }
         },
@@ -1173,8 +1800,14 @@
           "request": {
             "method": "PATCH",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -1182,8 +1815,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/versiones/1/devolver",
-              "host": ["{{baseUrl}}"],
-              "path": ["versiones", "1", "devolver"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "versiones",
+                "1",
+                "devolver"
+              ]
             }
           }
         },
@@ -1192,8 +1831,14 @@
           "request": {
             "method": "PATCH",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -1201,8 +1846,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/versiones/1/sincronizar",
-              "host": ["{{baseUrl}}"],
-              "path": ["versiones", "1", "sincronizar"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "versiones",
+                "1",
+                "sincronizar"
+              ]
             }
           }
         },
@@ -1211,8 +1862,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -1220,8 +1877,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/versiones/1/clonar",
-              "host": ["{{baseUrl}}"],
-              "path": ["versiones", "1", "clonar"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "versiones",
+                "1",
+                "clonar"
+              ]
             }
           }
         }
@@ -1235,17 +1898,40 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/reportes/horario?idVersion=1",
-              "host": ["{{baseUrl}}"],
-              "path": ["reportes", "horario"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reportes",
+                "horario"
+              ],
               "query": [
-                { "key": "idVersion", "value": "1" },
-                { "key": "idDocente", "value": "1", "disabled": true },
-                { "key": "idEspacio", "value": "1", "disabled": true },
-                { "key": "idSeccion", "value": "1", "disabled": true }
+                {
+                  "key": "idVersion",
+                  "value": "1"
+                },
+                {
+                  "key": "idDocente",
+                  "value": "1",
+                  "disabled": true
+                },
+                {
+                  "key": "idEspacio",
+                  "value": "1",
+                  "disabled": true
+                },
+                {
+                  "key": "idSeccion",
+                  "value": "1",
+                  "disabled": true
+                }
               ]
             }
           }
@@ -1255,12 +1941,24 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/reportes/horario/version/1/docente/1",
-              "host": ["{{baseUrl}}"],
-              "path": ["reportes", "horario", "version", "1", "docente", "1"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reportes",
+                "horario",
+                "version",
+                "1",
+                "docente",
+                "1"
+              ]
             }
           }
         },
@@ -1269,12 +1967,24 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/reportes/horario/version/1/espacio/1",
-              "host": ["{{baseUrl}}"],
-              "path": ["reportes", "horario", "version", "1", "espacio", "1"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reportes",
+                "horario",
+                "version",
+                "1",
+                "espacio",
+                "1"
+              ]
             }
           }
         },
@@ -1283,12 +1993,24 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/reportes/horario/version/1/seccion/1",
-              "host": ["{{baseUrl}}"],
-              "path": ["reportes", "horario", "version", "1", "seccion", "1"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reportes",
+                "horario",
+                "version",
+                "1",
+                "seccion",
+                "1"
+              ]
             }
           }
         },
@@ -1297,16 +2019,35 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/reportes/carga-docente?idVersion=1",
-              "host": ["{{baseUrl}}"],
-              "path": ["reportes", "carga-docente"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reportes",
+                "carga-docente"
+              ],
               "query": [
-                { "key": "idVersion", "value": "1" },
-                { "key": "idDocente", "value": "1", "disabled": true },
-                { "key": "estadoCarga", "value": "BAJO_MINIMO", "disabled": true }
+                {
+                  "key": "idVersion",
+                  "value": "1"
+                },
+                {
+                  "key": "idDocente",
+                  "value": "1",
+                  "disabled": true
+                },
+                {
+                  "key": "estadoCarga",
+                  "value": "BAJO_MINIMO",
+                  "disabled": true
+                }
               ]
             }
           }
@@ -1316,14 +2057,26 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/reportes/secciones-riesgo-cierre",
-              "host": ["{{baseUrl}}"],
-              "path": ["reportes", "secciones-riesgo-cierre"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reportes",
+                "secciones-riesgo-cierre"
+              ],
               "query": [
-                { "key": "periodo", "value": "2026-1", "disabled": true }
+                {
+                  "key": "periodo",
+                  "value": "2026-1",
+                  "disabled": true
+                }
               ]
             }
           }
@@ -1333,14 +2086,25 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/reportes/secciones-sesiones-faltantes?idVersion=1",
-              "host": ["{{baseUrl}}"],
-              "path": ["reportes", "secciones-sesiones-faltantes"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reportes",
+                "secciones-sesiones-faltantes"
+              ],
               "query": [
-                { "key": "idVersion", "value": "1" }
+                {
+                  "key": "idVersion",
+                  "value": "1"
+                }
               ]
             }
           }
@@ -1350,14 +2114,25 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/reportes/sesiones-dias-consecutivos?idVersion=1",
-              "host": ["{{baseUrl}}"],
-              "path": ["reportes", "sesiones-dias-consecutivos"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reportes",
+                "sesiones-dias-consecutivos"
+              ],
               "query": [
-                { "key": "idVersion", "value": "1" }
+                {
+                  "key": "idVersion",
+                  "value": "1"
+                }
               ]
             }
           }
@@ -1372,12 +2147,19 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/roles",
-              "host": ["{{baseUrl}}"],
-              "path": ["roles"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "roles"
+              ]
             }
           }
         },
@@ -1386,12 +2168,19 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/usuarios",
-              "host": ["{{baseUrl}}"],
-              "path": ["usuarios"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "usuarios"
+              ]
             }
           }
         },
@@ -1400,12 +2189,20 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/usuarios/1",
-              "host": ["{{baseUrl}}"],
-              "path": ["usuarios", "1"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "usuarios",
+                "1"
+              ]
             }
           }
         },
@@ -1414,8 +2211,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -1423,8 +2226,12 @@
             },
             "url": {
               "raw": "{{baseUrl}}/usuarios",
-              "host": ["{{baseUrl}}"],
-              "path": ["usuarios"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "usuarios"
+              ]
             }
           }
         },
@@ -1433,8 +2240,14 @@
           "request": {
             "method": "PUT",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -1442,8 +2255,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/usuarios/3",
-              "host": ["{{baseUrl}}"],
-              "path": ["usuarios", "3"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "usuarios",
+                "3"
+              ]
             }
           }
         },
@@ -1452,16 +2270,35 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/auditoria",
-              "host": ["{{baseUrl}}"],
-              "path": ["auditoria"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auditoria"
+              ],
               "query": [
-                { "key": "tablaAfectada", "value": "asignacion", "disabled": true },
-                { "key": "accion", "value": "INSERT", "disabled": true },
-                { "key": "idUsuario", "value": "1", "disabled": true }
+                {
+                  "key": "tablaAfectada",
+                  "value": "asignacion",
+                  "disabled": true
+                },
+                {
+                  "key": "accion",
+                  "value": "INSERT",
+                  "disabled": true
+                },
+                {
+                  "key": "idUsuario",
+                  "value": "1",
+                  "disabled": true
+                }
               ]
             }
           }

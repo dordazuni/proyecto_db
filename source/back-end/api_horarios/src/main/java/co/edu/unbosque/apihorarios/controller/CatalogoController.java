@@ -77,8 +77,13 @@ public class CatalogoController {
         return ResponseEntity.ok(catalogoService.obtenerDocentePorId(id));
     }
 
+    @PostMapping({"/integracion/docentes", "/docentes"})
+    public ResponseEntity<Docente> crearDocente(@RequestBody Docente docente) throws SQLException {
+        return ResponseEntity.status(HttpStatus.CREATED).body(catalogoService.crearDocente(docente));
+    }
+
     // =====================================================================
-    // RF-03: Espacios (solo lectura desde la aplicación, RN-19)
+    // RF-03: Espacios (espacio, laboratorio_computo, laboratorio_especializado)
     // =====================================================================
     @GetMapping("/espacios")
     public ResponseEntity<List<Espacio>> listarEspacios() throws SQLException {
@@ -88,6 +93,11 @@ public class CatalogoController {
     @GetMapping("/espacios/{id}")
     public ResponseEntity<Espacio> obtenerEspacio(@PathVariable int id) throws SQLException {
         return ResponseEntity.ok(catalogoService.obtenerEspacioPorId(id));
+    }
+
+    @PostMapping({"/integracion/espacios", "/espacios"})
+    public ResponseEntity<Espacio> crearEspacio(@RequestBody Espacio espacio) throws SQLException {
+        return ResponseEntity.status(HttpStatus.CREATED).body(catalogoService.crearEspacio(espacio));
     }
 
     // =====================================================================

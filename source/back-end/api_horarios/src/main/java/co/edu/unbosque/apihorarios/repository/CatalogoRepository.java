@@ -167,6 +167,47 @@ public class CatalogoRepository {
         throw new NoSuchElementException("Docente no encontrado: " + idDocente);
     }
 
+    public Docente crearDocente(Docente d) throws SQLException {
+        Integer idContrato = d.getIdTipoContrato();
+        if (idContrato == null && d.getNombreTipoContrato() != null && !d.getNombreTipoContrato().isBlank()) {
+            String sqlContrato = "SELECT id_tipo_contrato FROM tipo_contrato WHERE UPPER(nombre) = UPPER(?)";
+            try (Connection conn = dataSource.getConnection();
+                 PreparedStatement ps = conn.prepareStatement(sqlContrato)) {
+                ps.setString(1, d.getNombreTipoContrato().trim());
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        idContrato = rs.getInt(1);
+                    }
+                }
+            }
+        }
+        if (idContrato == null) {
+            idContrato = 1;
+        }
+
+        String sql = "INSERT INTO docente (tipo_documento, numero_documento, nombres, apellidos, email, estado_vinculacion, id_tipo_contrato) " +
+                     "VALUES (?, ?, ?, ?, ?, COALESCE(?, 'ACTIVO'), ?) RETURNING id_docente";
+        int idGenerado;
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, d.getTipoDocumento() != null && !d.getTipoDocumento().isBlank() ? d.getTipoDocumento().trim() : "CC");
+            ps.setString(2, d.getNumeroDocumento().trim());
+            ps.setString(3, d.getNombres().trim());
+            ps.setString(4, d.getApellidos().trim());
+            ps.setString(5, d.getEmail().toLowerCase().trim());
+            ps.setString(6, d.getEstadoVinculacion() != null && !d.getEstadoVinculacion().isBlank() ? d.getEstadoVinculacion().trim() : "ACTIVO");
+            ps.setInt(7, idContrato);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    idGenerado = rs.getInt(1);
+                } else {
+                    throw new SQLException("No se pudo insertar el docente");
+                }
+            }
+        }
+        return obtenerDocentePorId(idGenerado);
+    }
+
     // =====================================================================
     // RF-03: Espacios (espacio, laboratorio_computo, laboratorio_especializado)
     // =====================================================================
@@ -205,6 +246,47 @@ public class CatalogoRepository {
             }
         }
         throw new NoSuchElementException("Espacio no encontrado: " + idEspacio);
+    }
+
+    public Espacio crearEspacio(Espacio e) throws SQLException {
+        String sql = "INSERT INTO espacio (codigo, nombre, capacidad, edificio, tipo_espacio) " +
+                     "VALUES (?, ?, ?, ?, ?) RETURNING id_espacio";
+        int idGenerado;
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, e.getCodigo().trim());
+            ps.setString(2, e.getNombre().trim());
+            ps.setInt(3, e.getCapacidad() != null ? e.getCapacidad() : 30);
+            ps.setString(4, e.getEdificio() != null && !e.getEdificio().isBlank() ? e.getEdificio().trim() : "Principal");
+            ps.setString(5, e.getTipoEspacio() != null && !e.getTipoEspacio().isBlank() ? e.getTipoEspacio().trim() : "AULA");
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    idGenerado = rs.getInt(1);
+                } else {
+                    throw new SQLException("No se pudo insertar el espacio");
+                }
+            }
+        }
+
+        if ("LABORATORIO_COMPUTO".equalsIgnoreCase(e.getTipoEspacio()) && e.getNumeroEquipos() != null) {
+            String sqlLc = "INSERT INTO laboratorio_computo (id_espacio, numero_equipos) VALUES (?, ?)";
+            try (Connection conn = dataSource.getConnection();
+                 PreparedStatement ps = conn.prepareStatement(sqlLc)) {
+                ps.setInt(1, idGenerado);
+                ps.setInt(2, e.getNumeroEquipos());
+                ps.executeUpdate();
+            }
+        } else if ("LABORATORIO_ESPECIALIZADO".equalsIgnoreCase(e.getTipoEspacio()) && e.getArea() != null) {
+            String sqlLe = "INSERT INTO laboratorio_especializado (id_espacio, area) VALUES (?, ?)";
+            try (Connection conn = dataSource.getConnection();
+                 PreparedStatement ps = conn.prepareStatement(sqlLe)) {
+                ps.setInt(1, idGenerado);
+                ps.setString(2, e.getArea());
+                ps.executeUpdate();
+            }
+        }
+
+        return obtenerEspacioPorId(idGenerado);
     }
 
     // =====================================================================

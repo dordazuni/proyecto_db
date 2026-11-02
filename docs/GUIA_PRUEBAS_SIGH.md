@@ -20,8 +20,15 @@ El archivo JSON actualizado se encuentra en:
    - Todos los endpoints de las carpetas `01` a `05` envían automáticamente el encabezado `Authorization: Bearer {{token}}`.
 2. **Eliminación de encabezados y campos obsoletos**:
    - Se eliminó por completo el antiguo encabezado `X-Usuario-Id` y el campo manual `idUsuario` de los cuerpos JSON en `/disponibilidad`, `/versiones` y `/asignaciones`. Ahora el backend extrae la identidad real del usuario directamente del token JWT firmado y la inyecta en PostgreSQL mediante `SELECT set_config('app.id_usuario', '<id>', true)`.
-3. **Nuevo endpoint `GET /auth/me`**:
-   - Permite probar la recuperación de la sesión activa a partir del token Bearer.
+3. **Endpoints de sesión y token**:
+   - `GET /auth/me`: Recuperación de la sesión activa a partir del token Bearer.
+   - `POST /auth/refresh`: Renovación de sesión con cabecera Bearer, cuerpo vacío `{}` y ventana de gracia.
+   - `POST /auth/logout`: Cierre de sesión y revocación en el registro de sesiones.
+   - `GET /auth/sessions`: Consulta de sesiones activas (exclusivo para `ADMINISTRADOR`, sin exponer tokens).
+4. **Ingesta de Sistemas Fuente (CU-03 / RN-19)**:
+   - `POST /integracion/docentes`: Ingesta segura de docentes desde Talento Humano.
+   - `POST /integracion/espacios`: Ingesta segura de aulas y laboratorios desde Planta Física.
+
 
 ### Cómo importarlo en Apidog:
 1. Abre tu proyecto en **Apidog** → **Settings (Configuración)** → **Import Data (Importar datos)**.
@@ -32,7 +39,7 @@ El archivo JSON actualizado se encuentra en:
 
 ## 2. Usuarios de prueba y permisos por rol (`RF-23`, `RF-25`, `RNF-04`)
 
-Los usuarios los crea el script `06`. Su contraseña guardada es el marcador `HASH_PENDIENTE_BACKEND`; mientras el backend no genere el hash definitivo, la contraseña de prueba es **`123456`**. El usuario técnico `sistema` (script `02`, decisión F7) tiene la contraseña `'!'`, que no es un hash válido, así que no puede iniciar sesión: solo firma en la bitácora los cambios hechos por script.
+Los usuarios los crea el script `06` con la contraseña de prueba **`123456`** almacenada como hash criptográfico SHA-256 (`8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92`, RNF-04). El usuario técnico `sistema` (script `02`, decisión F7) tiene la contraseña `'!'`, que no es un hash válido, así que no puede iniciar sesión: solo firma en la bitácora los cambios hechos por script.
 
 | Usuario | Rol | Pool PostgreSQL | Módulos en la web | Qué puede escribir en la base (script `05`) |
 | :--- | :--- | :--- | :--- | :--- |

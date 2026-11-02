@@ -56,6 +56,25 @@ public class CatalogoService {
         return catalogoRepository.obtenerDocentePorId(idDocente);
     }
 
+    public Docente crearDocente(Docente docente) throws SQLException {
+        if (docente == null) {
+            throw new IllegalArgumentException("Los datos del docente son requeridos");
+        }
+        if (docente.getNumeroDocumento() == null || docente.getNumeroDocumento().isBlank()) {
+            throw new IllegalArgumentException("El número de documento es obligatorio");
+        }
+        if (docente.getNombres() == null || docente.getNombres().isBlank()) {
+            throw new IllegalArgumentException("Los nombres del docente son obligatorios");
+        }
+        if (docente.getApellidos() == null || docente.getApellidos().isBlank()) {
+            throw new IllegalArgumentException("Los apellidos del docente son obligatorios");
+        }
+        if (docente.getEmail() == null || docente.getEmail().isBlank()) {
+            throw new IllegalArgumentException("El correo electrónico del docente es obligatorio");
+        }
+        return catalogoRepository.crearDocente(docente);
+    }
+
     // RF-03: Espacios
     public List<Espacio> listarEspacios() throws SQLException {
         return catalogoRepository.listarEspacios();
@@ -63,6 +82,19 @@ public class CatalogoService {
 
     public Espacio obtenerEspacioPorId(int idEspacio) throws SQLException {
         return catalogoRepository.obtenerEspacioPorId(idEspacio);
+    }
+
+    public Espacio crearEspacio(Espacio espacio) throws SQLException {
+        if (espacio == null) {
+            throw new IllegalArgumentException("Los datos del espacio son requeridos");
+        }
+        if (espacio.getCodigo() == null || espacio.getCodigo().isBlank()) {
+            throw new IllegalArgumentException("El código del espacio es obligatorio");
+        }
+        if (espacio.getNombre() == null || espacio.getNombre().isBlank()) {
+            throw new IllegalArgumentException("El nombre del espacio es obligatorio");
+        }
+        return catalogoRepository.crearEspacio(espacio);
     }
 
     // RF-04: Recursos y Dotación de Espacios

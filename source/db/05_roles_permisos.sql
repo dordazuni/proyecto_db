@@ -131,6 +131,10 @@ GRANT UPDATE (valor, descripcion) ON parametro_sistema TO rol_administrador;
 -- CU-02: usuarios (RF-23). No cambia el catálogo de roles.
 GRANT INSERT, UPDATE ON usuario TO rol_administrador;
 
+-- CU-03: Ingesta desde sistemas fuente (Talento Humano e Infraestructura) (RN-19)
+GRANT INSERT ON docente, espacio TO rol_administrador;
+GRANT INSERT ON laboratorio_computo, laboratorio_especializado TO rol_administrador;
+
 -- CU-03: matrícula real desde los sistemas fuente (RF-10). Solo esa
 -- columna: no puede tocar cupos ni la justificación (RN-10).
 GRANT UPDATE (matricula_real) ON seccion TO rol_administrador;
