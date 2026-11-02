@@ -92,6 +92,8 @@ export class SighController {
   readonly reporteRiesgoCierre = signal<SeccionRiesgoCierre[]>([]);
   readonly reporteSesionesFaltantes = signal<SeccionSesionesFaltantes[]>([]);
   readonly reporteDiasConsecutivos = signal<SesionDiasConsecutivos[]>([]);
+  /** Versión publicada que está viendo el docente (null = el período no tiene horario publicado). */
+  readonly versionPublicadaDocente = signal<{ idVersion: number; numeroVersion: number; estado: string } | null>(null);
 
   // 05. Seguridad y Auditoría (RF-23 a RF-25)
   readonly roles = signal<Rol[]>([]);
@@ -166,6 +168,7 @@ export class SighController {
     this.reporteRiesgoCierre.set([]);
     this.reporteSesionesFaltantes.set([]);
     this.reporteDiasConsecutivos.set([]);
+    this.versionPublicadaDocente.set(null);
 
     this.roles.set([]);
     this.usuarios.set([]);
@@ -253,13 +256,8 @@ export class SighController {
     this.guardarVista(UI_MODULO_KEY, tab);
     this.clearAlert();
     if (tab === 'planeacion') {
-      if (this.isDocente()) {
-        const idDoc = this.api.authenticatedUser()?.idDocente;
-        const pid = this.selectedPeriodoId();
-        if (idDoc && pid) {
-          this.cargarDisponibilidad(idDoc, pid);
-        }
-      } else {
+      // La disponibilidad la carga el propio módulo de Planeación (docente y período visibles).
+      if (!this.isDocente()) {
         this.cargarSecciones(this.selectedPeriodoId());
       }
     } else if (tab === 'programacion') {
@@ -361,11 +359,7 @@ export class SighController {
     if (this.isAdmin() || this.isCoordinador() || this.isAprobador()) {
       this.cargarVersiones(Number(idPeriodo));
     } else if (this.isDocente()) {
-      const idDoc = this.api.authenticatedUser()?.idDocente;
-      if (idDoc) {
-        this.cargarDisponibilidad(idDoc, Number(idPeriodo));
-      }
-      this.consultarHorarioReporte({ idPeriodo: Number(idPeriodo), idDocente: idDoc ?? null });
+      this.cargarHorarioDocente(Number(idPeriodo));
     }
   }
 
@@ -560,18 +554,10 @@ export class SighController {
     });
   }
 
-  reabrirSeccion(idSeccion: number): void {
-    this.api.cambiarEstadoSeccion(idSeccion, 'ABIERTA').subscribe({
-      next: (s) => {
-        this.showSuccess('RF-10 | Sección reabierta', `La sección #${s.numero} está nuevamente ABIERTA.`);
-        this.cargarSecciones(this.selectedPeriodoId());
-      },
-      error: (err) => this.handleApiError(err, 'No se pudo reabrir la sección')
-    });
-  }
-
   cargarDisponibilidad(idDocente: number, idPeriodo: number): void {
     if (!this.isCoordinador() && !this.isDocente()) return;
+    // Se vacía antes de pedir, para no mostrar ni un instante la del docente o período anterior.
+    this.disponibilidades.set([]);
     this.api.listarDisponibilidad(idDocente, idPeriodo).subscribe({
       next: (l) => this.disponibilidades.set(l),
       error: (err) => this.handleApiError(err, 'Error al consultar disponibilidad del docente (RF-11)')
@@ -760,12 +746,24 @@ export class SighController {
     const codigoPeriodo = this.selectedPeriodo()?.codigo;
 
     if (this.isDocente()) {
-      const idDoc = this.api.authenticatedUser()?.idDocente ?? null;
-      this.consultarHorarioReporte({
-        idVersion,
-        idPeriodo: this.selectedPeriodoId(),
-        idDocente: idDoc
-      });
+      const pid = this.selectedPeriodoId();
+      if (pid) this.cargarHorarioDocente(pid);
+      return;
+    }
+
+    // Sin versión seleccionada no hay nada que reportar: si se consultara con idVersion
+    // nulo, el backend devolvería las filas de TODAS las versiones mezcladas.
+    if (!idVersion) {
+      this.reporteHorario.set([]);
+      this.reporteCargaDocente.set([]);
+      this.reporteSesionesFaltantes.set([]);
+      this.reporteDiasConsecutivos.set([]);
+      if (this.isAdmin() || this.isCoordinador()) {
+        this.api.consultarSeccionesRiesgoCierre(codigoPeriodo).subscribe({
+          next: (d) => this.reporteRiesgoCierre.set(d),
+          error: () => {}
+        });
+      }
       return;
     }
 
@@ -790,6 +788,36 @@ export class SighController {
     });
   }
 
+  /**
+   * Horario del docente en sesión para un período: se muestra SOLO la última versión
+   * AVALADA o SINCRONIZADA (la publicada). Si el período no tiene ninguna, la lista
+   * queda vacía y versionPublicadaDocente queda en null (la vista muestra un aviso).
+   * El rol docente no puede leer version_horario; por eso la versión se deduce de
+   * v_horario, que sí trae id, número y estado de la versión en cada fila.
+   */
+  cargarHorarioDocente(idPeriodo: number): void {
+    const idDoc = this.api.authenticatedUser()?.idDocente ?? null;
+    this.reporteHorario.set([]);
+    this.versionPublicadaDocente.set(null);
+    if (!idDoc) return;
+
+    this.api.consultarHorario({ idPeriodo }).subscribe({
+      next: (filas) => {
+        if (this.selectedPeriodoId() !== idPeriodo) return; // llegó tarde: el usuario ya cambió de período
+        const publicadas = filas.filter((f) => f.estadoVersion === 'AVALADO' || f.estadoVersion === 'SINCRONIZADO');
+        if (publicadas.length === 0) return;
+        const ultima = publicadas.reduce((a, b) => (b.numeroVersion > a.numeroVersion ? b : a));
+        this.versionPublicadaDocente.set({
+          idVersion: ultima.idVersion,
+          numeroVersion: ultima.numeroVersion,
+          estado: ultima.estadoVersion
+        });
+        this.reporteHorario.set(publicadas.filter((f) => f.idVersion === ultima.idVersion && f.idDocente === idDoc));
+      },
+      error: (err) => this.handleApiError(err, 'Error al consultar tu horario (RF-19)')
+    });
+  }
+
   consultarHorarioReporte(filtros: {
     idVersion?: number | null;
     idDocente?: number | null;
@@ -804,6 +832,10 @@ export class SighController {
   }
 
   filtrarCargaDocente(idVersion?: number | null, idDocente?: number | null, estadoCarga?: string | null): void {
+    if (!idVersion) {
+      this.reporteCargaDocente.set([]);
+      return;
+    }
     this.api.consultarCargaDocente(idVersion, idDocente, estadoCarga).subscribe({
       next: (d) => this.reporteCargaDocente.set(d),
       error: (err) => this.handleApiError(err, 'Error al consultar carga docente (RF-20)')

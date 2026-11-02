@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, effect, inject, signal, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SighController } from '../../../controllers/sigh.controller';
@@ -38,6 +38,7 @@ import { Franja, Seccion } from '../../../models/sigh.models';
             <div class="md-field">
               <label>Curso</label>
               <select class="md-select" [(ngModel)]="nuevaSeccion.idCurso">
+                <option [ngValue]="null" disabled>— Seleccione un curso —</option>
                 @for (c of sigh.cursos(); track c.idCurso) {
                   <option [ngValue]="c.idCurso">{{ c.codigo }} - {{ c.nombre }}</option>
                 }
@@ -119,7 +120,8 @@ import { Franja, Seccion } from '../../../models/sigh.models';
                         min="0"
                         class="md-input"
                         style="width: 80px; padding: 5px 8px"
-                        [ngModel]="s.matriculaReal ?? s.matriculaProyectada"
+                        placeholder="Sin dato"
+                        [ngModel]="matriculaDraft[s.idSeccion!] ?? s.matriculaReal"
                         (ngModelChange)="matriculaDraft[s.idSeccion!] = $event" />
                       <button
                         class="md-btn md-btn-tonal md-btn-sm"
@@ -152,9 +154,7 @@ import { Franja, Seccion } from '../../../models/sigh.models';
                           <span class="material-icons">lock</span> Cerrar
                         </button>
                       } @else {
-                        <button class="md-btn md-btn-outlined md-btn-sm" (click)="sigh.reabrirSeccion(s.idSeccion!)">
-                          <span class="material-icons">lock_open</span> Reabrir
-                        </button>
+                        <span style="color: #94a3b8">—</span>
                       }
                     </td>
                   }
@@ -189,15 +189,23 @@ import { Franja, Seccion } from '../../../models/sigh.models';
           </div>
           <div style="min-width: 280px">
             @if (sigh.isDocente()) {
-              <span class="md-chip md-chip-info">
-                <span class="material-icons" style="font-size: 16px">person</span>
-                Docente: {{ sigh.activeUser()?.nombreDocente || sigh.activeUser()?.nombreUsuario }} (#{{ docenteDispId() }})
-              </span>
+              @if (docenteDispId()) {
+                <span class="md-chip md-chip-info">
+                  <span class="material-icons" style="font-size: 16px">person</span>
+                  Docente: {{ sigh.activeUser()?.nombreDocente || sigh.activeUser()?.nombreUsuario }} (#{{ docenteDispId() }})
+                </span>
+              } @else {
+                <span class="md-chip md-chip-error">
+                  <span class="material-icons" style="font-size: 16px">link_off</span>
+                  Tu usuario no está vinculado a un docente (S-09). Pide al Administrador que lo vincule.
+                </span>
+              }
             } @else {
               <label style="font-size: 0.78rem; font-weight: 500; color: var(--md-text-secondary); display: block; margin-bottom: 4px">
                 Docente a consultar:
               </label>
               <select class="md-select" [ngModel]="docenteDispId()" (ngModelChange)="cambiarDocenteDisponibilidad($event)">
+                <option [ngValue]="null" disabled>— Seleccione un docente —</option>
                 @for (d of sigh.docentes(); track d.idDocente) {
                   <option [ngValue]="d.idDocente">#{{ d.idDocente }} - {{ d.nombres }} {{ d.apellidos }} ({{ d.nombreTipoContrato }})</option>
                 }
@@ -257,13 +265,14 @@ import { Franja, Seccion } from '../../../models/sigh.models';
 export class PlaneacionModuleOrganismComponent implements OnInit {
   readonly sigh = inject(SighController);
   readonly subTab = signal<'secciones' | 'disponibilidad'>('secciones');
-  readonly docenteDispId = signal<number>(1);
+  /** Docente cuya disponibilidad se muestra. null = ninguno elegido (o docente sin vínculo S-09). */
+  readonly docenteDispId = signal<number | null>(null);
 
-  matriculaDraft: Record<number, number> = {};
+  /** Valores escritos en la columna "Matrícula Real" que aún no se han guardado. */
+  matriculaDraft: Record<number, number | null> = {};
 
-  nuevaSeccion: Seccion = {
-    idCurso: 1,
-    idPeriodo: 1,
+  nuevaSeccion: Omit<Seccion, 'idCurso' | 'idPeriodo'> & { idCurso: number | null } = {
+    idCurso: null,
     numero: 1,
     cupoMin: 10,
     cupoMax: 35,
@@ -283,14 +292,38 @@ export class PlaneacionModuleOrganismComponent implements OnInit {
 
   readonly horas = ['07:00', '09:00', '11:00', '13:00', '15:00', '17:00', '19:00'];
 
+  constructor() {
+    // Recarga la disponibilidad cuando cambia el docente elegido o el período del
+    // selector superior, mientras la pestaña de disponibilidad esté abierta.
+    effect(() => {
+      const tab = this.subTab();
+      const idDocente = this.docenteDispId();
+      const idPeriodo = this.sigh.selectedPeriodoId();
+      if (tab !== 'disponibilidad') return;
+      untracked(() => {
+        if (idDocente && idPeriodo) {
+          this.sigh.cargarDisponibilidad(idDocente, idPeriodo);
+        } else {
+          this.sigh.disponibilidades.set([]);
+        }
+      });
+    });
+
+    // Al cambiar de período se descartan las matrículas escritas y no guardadas.
+    effect(() => {
+      this.sigh.selectedPeriodoId();
+      untracked(() => (this.matriculaDraft = {}));
+    });
+  }
+
   ngOnInit(): void {
     const firstCourse = this.sigh.cursos()[0];
     if (firstCourse?.idCurso) this.nuevaSeccion.idCurso = firstCourse.idCurso;
 
     if (this.sigh.isDocente()) {
-      const ownDocenteId = this.sigh.activeUser()?.idDocente ?? 1;
-      this.docenteDispId.set(ownDocenteId);
-      this.abrirTabDisponibilidad();
+      // Solo su propio docente (RN-19). Si el usuario no tiene vínculo, queda en null.
+      this.docenteDispId.set(this.sigh.activeUser()?.idDocente ?? null);
+      this.subTab.set('disponibilidad');
     } else {
       const firstDoc = this.sigh.docentes()[0];
       if (firstDoc?.idDocente) this.docenteDispId.set(firstDoc.idDocente);
@@ -298,9 +331,18 @@ export class PlaneacionModuleOrganismComponent implements OnInit {
   }
 
   crearSeccion(): void {
-    const pid = this.sigh.selectedPeriodoId() || 1;
+    const pid = this.sigh.selectedPeriodoId();
+    if (!pid) {
+      this.sigh.alert.set({ type: 'warning', title: 'Falta el período', message: 'Selecciona un período en la barra superior.' });
+      return;
+    }
+    if (!this.nuevaSeccion.idCurso) {
+      this.sigh.alert.set({ type: 'warning', title: 'Falta el curso', message: 'Selecciona el curso de la nueva sección.' });
+      return;
+    }
     this.sigh.crearSeccion({
       ...this.nuevaSeccion,
+      idCurso: this.nuevaSeccion.idCurso,
       idPeriodo: pid,
       justificacionSobrecupo: this.nuevaSeccion.justificacionSobrecupo?.trim() || null
     });
@@ -308,20 +350,36 @@ export class PlaneacionModuleOrganismComponent implements OnInit {
 
   guardarMatriculaReal(s: Seccion): void {
     if (!s.idSeccion) return;
-    const val = this.matriculaDraft[s.idSeccion] ?? s.matriculaReal ?? s.matriculaProyectada;
-    this.sigh.registrarMatriculaReal(s.idSeccion, Number(val));
+    const escrito = this.matriculaDraft[s.idSeccion];
+    const val = escrito ?? s.matriculaReal;
+    // Nunca se guarda la proyectada como si fuera real: si no hay dato escrito, no se envía nada.
+    if (val === null || val === undefined || String(val).trim() === '') {
+      this.sigh.alert.set({
+        type: 'warning',
+        title: 'RF-10 | Falta la matrícula real',
+        message: `Escribe la matrícula real de la sección #${s.numero} antes de guardar.`
+      });
+      return;
+    }
+    const numero = Number(val);
+    if (!Number.isInteger(numero) || numero < 0) {
+      this.sigh.alert.set({
+        type: 'warning',
+        title: 'RF-10 | Valor no válido',
+        message: 'La matrícula real debe ser un número entero mayor o igual a 0.'
+      });
+      return;
+    }
+    delete this.matriculaDraft[s.idSeccion];
+    this.sigh.registrarMatriculaReal(s.idSeccion, numero);
   }
 
   abrirTabDisponibilidad(): void {
     this.subTab.set('disponibilidad');
-    const pid = this.sigh.selectedPeriodoId() || 1;
-    this.sigh.cargarDisponibilidad(this.docenteDispId(), pid);
   }
 
   cambiarDocenteDisponibilidad(idDocente: number): void {
     this.docenteDispId.set(Number(idDocente));
-    const pid = this.sigh.selectedPeriodoId() || 1;
-    this.sigh.cargarDisponibilidad(Number(idDocente), pid);
   }
 
   buscarFranja(diaSemana: number, horaPrefix: string): Franja | undefined {
@@ -338,7 +396,9 @@ export class PlaneacionModuleOrganismComponent implements OnInit {
 
   toggleFranja(idFranja: number): void {
     if (!this.sigh.isDocente()) return;
-    const pid = this.sigh.selectedPeriodoId() || 1;
-    this.sigh.toggleDisponibilidadFranja(this.docenteDispId(), pid, idFranja);
+    const idDocente = this.docenteDispId();
+    const idPeriodo = this.sigh.selectedPeriodoId();
+    if (!idDocente || !idPeriodo) return;
+    this.sigh.toggleDisponibilidadFranja(idDocente, idPeriodo, idFranja);
   }
 }

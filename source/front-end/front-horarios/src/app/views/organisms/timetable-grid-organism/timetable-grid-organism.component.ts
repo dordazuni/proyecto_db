@@ -26,11 +26,13 @@ interface TimeRow {
         <tbody>
           @for (row of timeRows; track row.label) {
             @if (row.isDeadZone) {
+              <!-- La zona muerta es solo de lunes a viernes (5 columnas). La columna del
+                   sábado la ocupa la celda de 11:00-13:00, que se extiende sobre esta fila. -->
               <tr class="dead-zone-row">
                 <td class="time-col">{{ row.label }}</td>
-                <td colspan="6" class="dead-zone-cell">
+                <td colspan="5" class="dead-zone-cell">
                   <span class="material-icons">block</span>
-                  ZONA MUERTA (RN-06 / P-06): Ninguna sesión puede programarse entre las 12:00 y las 13:00
+                  ZONA MUERTA (RN-06 / P-06): de lunes a viernes ninguna sesión puede tocar la franja de 12:00 a 13:00
                 </td>
               </tr>
             } @else {
@@ -39,6 +41,7 @@ interface TimeRow {
                 @for (day of days; track day.dia) {
                   @let franja = findFranja(day.dia, row.horaInicioPrefix);
                   <td
+                    [attr.rowspan]="esSabadoOnce(day.dia, row) ? 2 : null"
                     class="slot-cell"
                     [class.disabled-slot]="!franja"
                     [class.editable-slot]="editable && !!franja"
@@ -76,6 +79,8 @@ interface TimeRow {
                           </div>
                         }
                       </div>
+                    } @else if (day.dia <= 5 && row.horaInicioPrefix === '11:00') {
+                      <span class="closed-label">Sin franja: cruzaría 12:00-13:00 (RN-06)</span>
                     } @else {
                       <span class="closed-label">Fuera de ventana (RN-07)</span>
                     }
@@ -245,13 +250,18 @@ export class TimetableGridOrganismComponent {
   readonly timeRows: TimeRow[] = [
     { label: '07:00 - 09:00', horaInicioPrefix: '07:00' },
     { label: '09:00 - 11:00', horaInicioPrefix: '09:00' },
-    { label: '11:00 - 13:00 (Sáb)', horaInicioPrefix: '11:00' },
+    { label: '11:00 - 13:00', horaInicioPrefix: '11:00' },
     { label: '12:00 - 13:00', horaInicioPrefix: '12:00', isDeadZone: true },
     { label: '13:00 - 15:00', horaInicioPrefix: '13:00' },
     { label: '15:00 - 17:00', horaInicioPrefix: '15:00' },
     { label: '17:00 - 19:00', horaInicioPrefix: '17:00' },
     { label: '19:00 - 21:00', horaInicioPrefix: '19:00' }
   ];
+
+  /** La celda del sábado 11:00-13:00 ocupa también la fila de la zona muerta (12:00-13:00). */
+  esSabadoOnce(dia: number, row: TimeRow): boolean {
+    return dia === 6 && row.horaInicioPrefix === '11:00';
+  }
 
   findFranja(diaSemana: number, horaInicioPrefix: string): Franja | undefined {
     return this.franjas.find(

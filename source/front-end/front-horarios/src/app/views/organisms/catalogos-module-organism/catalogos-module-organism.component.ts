@@ -210,6 +210,7 @@ import { Curso, PeriodoAcademico, Recurso } from '../../../models/sigh.models';
               <div class="md-field">
                 <label>Seleccionar Curso para Habilitar</label>
                 <select class="md-select" [(ngModel)]="cursoParaHabilitarId">
+                  <option [ngValue]="null" disabled>— Seleccione un curso —</option>
                   @for (c of sigh.cursos(); track c.idCurso) {
                     <option [ngValue]="c.idCurso">{{ c.codigo }} - {{ c.nombre }}</option>
                   }
@@ -316,6 +317,7 @@ import { Curso, PeriodoAcademico, Recurso } from '../../../models/sigh.models';
               <div class="md-field">
                 <label>Recurso</label>
                 <select class="md-select" [(ngModel)]="recursoEspacioId">
+                  <option [ngValue]="null" disabled>— Seleccione un recurso —</option>
                   @for (r of sigh.recursos(); track r.idRecurso) {
                     <option [ngValue]="r.idRecurso">{{ r.nombre }} ({{ r.categoria }})</option>
                   }
@@ -453,6 +455,7 @@ import { Curso, PeriodoAcademico, Recurso } from '../../../models/sigh.models';
               <div class="md-field">
                 <label>Recurso Exigido</label>
                 <select class="md-select" [(ngModel)]="recursoCursoId">
+                  <option [ngValue]="null" disabled>— Seleccione un recurso —</option>
                   @for (r of sigh.recursos(); track r.idRecurso) {
                     <option [ngValue]="r.idRecurso">{{ r.nombre }} ({{ r.categoria }})</option>
                   }
@@ -667,14 +670,14 @@ export class CatalogosModuleOrganismComponent implements OnInit {
   };
 
   readonly docenteSeleccionadoId = signal<number | null>(null);
-  cursoParaHabilitarId = 1;
+  cursoParaHabilitarId: number | null = null;
 
   readonly espacioSeleccionadoId = signal<number | null>(null);
-  recursoEspacioId = 1;
+  recursoEspacioId: number | null = null;
   recursoEspacioCantidad = 1;
 
   readonly cursoSeleccionadoId = signal<number | null>(null);
-  recursoCursoId = 1;
+  recursoCursoId: number | null = null;
 
   ngOnInit(): void {
     if (this.sigh.isCoordinador()) {
