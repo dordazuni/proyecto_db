@@ -277,6 +277,20 @@ export class SighController {
     this.alert.set({ type: 'success', title, message });
   }
 
+  /** Aviso amarillo para validaciones del formulario (no se envió nada a la base). */
+  showWarning(title: string, message: string): void {
+    this.alert.set({ type: 'warning', title, message });
+  }
+
+  /** Pide confirmación antes de una acción que no se puede deshacer desde la aplicación. */
+  confirmar(mensaje: string): boolean {
+    try {
+      return window.confirm(mensaje);
+    } catch {
+      return false;
+    }
+  }
+
   handleApiError(err: any, fallbackTitle = 'Operación rechazada por la Base de Datos'): void {
     this.loading.set(false);
     const apiErr: Partial<ApiErrorResponse> = err?.error && typeof err.error === 'object' ? err.error : {};
@@ -363,9 +377,10 @@ export class SighController {
     }
   }
 
-  crearPeriodo(periodo: PeriodoAcademico): void {
+  crearPeriodo(periodo: PeriodoAcademico, onSuccess?: () => void): void {
     this.api.crearPeriodo(periodo).subscribe({
       next: (creado) => {
+        onSuccess?.();
         this.showSuccess('RF-01 | Período creado', `Período ${creado.codigo} (${creado.estado}) registrado.`);
         this.api.listarPeriodos().subscribe((l) => this.periodos.set(l));
       },
@@ -383,9 +398,10 @@ export class SighController {
     });
   }
 
-  crearRecurso(recurso: Recurso): void {
+  crearRecurso(recurso: Recurso, onSuccess?: () => void): void {
     this.api.crearRecurso(recurso).subscribe({
       next: (r) => {
+        onSuccess?.();
         this.showSuccess('RF-04 | Recurso creado', `Recurso "${r.nombre}" (${r.categoria}) agregado al catálogo.`);
         this.api.listarRecursos().subscribe((l) => this.recursos.set(l));
       },
@@ -420,9 +436,10 @@ export class SighController {
     });
   }
 
-  crearCurso(curso: Curso): void {
+  crearCurso(curso: Curso, onSuccess?: () => void): void {
     this.api.crearCurso(curso).subscribe({
       next: (c) => {
+        onSuccess?.();
         this.showSuccess('RF-05 | Curso creado', `Curso ${c.codigo} - ${c.nombre} registrado.`);
         this.api.listarCursos().subscribe((l) => this.cursos.set(l));
       },
@@ -494,9 +511,10 @@ export class SighController {
     });
   }
 
-  actualizarParametro(clave: string, valor: number, descripcion: string): void {
+  actualizarParametro(clave: string, valor: number, descripcion: string, onSuccess?: () => void): void {
     this.api.actualizarParametro(clave, { clave, valor, descripcion }).subscribe({
       next: (p) => {
+        onSuccess?.();
         this.showSuccess('RF-08 | Parámetro actualizado', `Parámetro ${p.clave} actualizado a ${p.valor} (RNF-07).`);
         this.api.listarParametros().subscribe((l) => this.parametros.set(l));
       },
@@ -516,9 +534,10 @@ export class SighController {
     });
   }
 
-  crearSeccion(seccion: Seccion): void {
+  crearSeccion(seccion: Seccion, onSuccess?: () => void): void {
     this.api.crearSeccion(seccion).subscribe({
       next: (s) => {
+        onSuccess?.();
         this.showSuccess(
           'RF-09 | Sección abierta',
           `Sección #${s.numero} creada con cupo máx ${s.cupoMax} y proyectada ${s.matriculaProyectada}.`
@@ -544,6 +563,9 @@ export class SighController {
   }
 
   cerrarSeccion(idSeccion: number): void {
+    const s = this.secciones().find((x) => x.idSeccion === idSeccion);
+    const nombre = s ? `${s.codigoCurso ?? ''} sección ${s.numero}` : `#${idSeccion}`;
+    if (!this.confirmar(`¿Cerrar la ${nombre}? Una sección cerrada no se puede reabrir desde la aplicación (RF-10).`)) return;
     this.api.cerrarSeccion(idSeccion).subscribe({
       next: (s) => {
         this.showSuccess('RF-10 | Sección cerrada', `La sección #${s.numero} ha pasado a estado CERRADA (RN-11).`);
@@ -726,6 +748,9 @@ export class SighController {
   }
 
   eliminarAsignacion(idAsignacion: number): void {
+    const h = this.horarioGrilla().find((x) => x.idAsignacion === idAsignacion);
+    const detalle = h ? `${h.codigoCurso} Sec. ${h.numeroSeccion} — ${h.nombreDia} ${h.horaInicio}` : `#${idAsignacion}`;
+    if (!this.confirmar(`¿Eliminar la sesión ${detalle}? Esta acción queda registrada en la bitácora.`)) return;
     const vid = this.selectedVersionId();
     this.api.eliminarAsignacion(idAsignacion).subscribe({
       next: () => {
@@ -853,9 +878,10 @@ export class SighController {
     this.filtrarAuditoria({});
   }
 
-  crearUsuario(usuario: Usuario): void {
+  crearUsuario(usuario: Usuario, onSuccess?: () => void): void {
     this.api.crearUsuario(usuario).subscribe({
       next: (u) => {
+        onSuccess?.();
         this.showSuccess('RF-23 | Usuario registrado', `Usuario "${u.nombreUsuario}" creado exitosamente.`);
         this.api.listarUsuarios().subscribe((l) => this.usuarios.set(l));
       },

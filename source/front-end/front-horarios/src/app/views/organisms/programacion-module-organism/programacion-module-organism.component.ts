@@ -132,8 +132,10 @@ import { Franja, HorarioDetalle } from '../../../models/sigh.models';
             <div class="md-field">
               <label>Sección Abierta (Curso / Cupo)</label>
               <select class="md-select" [(ngModel)]="formAsignacion.idSeccion">
-                <option [ngValue]="null" disabled>— Seleccione una sección —</option>
-                @for (s of sigh.secciones(); track s.idSeccion) {
+                <option [ngValue]="null" disabled>
+                  {{ seccionesAbiertas().length ? '— Seleccione una sección —' : '— No hay secciones abiertas en este período —' }}
+                </option>
+                @for (s of seccionesAbiertas(); track s.idSeccion) {
                   <option [ngValue]="s.idSeccion">
                     #{{ s.idSeccion }} | {{ s.codigoCurso }} Sec. {{ s.numero }} ({{ s.nombreCurso }}) — [{{ s.estado }}, Mat: {{ s.matriculaReal ?? s.matriculaProyectada }}]
                   </option>
@@ -256,13 +258,16 @@ export class ProgramacionModuleOrganismComponent implements OnInit {
     idFranja: null
   };
 
+  /** Solo las secciones ABIERTAS se pueden programar: una CERRADA no recibe sesiones (RN-11). */
+  readonly seccionesAbiertas = computed(() => this.sigh.secciones().filter((s) => s.estado === 'ABIERTA'));
+
   readonly esEditable = computed(() => {
     const estado = this.sigh.selectedVersion()?.estado;
     return this.sigh.isCoordinador() && estado === 'EN_EDICION';
   });
 
   ngOnInit(): void {
-    const s = this.sigh.secciones()[0];
+    const s = this.seccionesAbiertas()[0];
     if (s?.idSeccion) this.formAsignacion.idSeccion = s.idSeccion;
     const d = this.sigh.docentes()[0];
     if (d?.idDocente) this.formAsignacion.idDocente = d.idDocente;
@@ -275,7 +280,7 @@ export class ProgramacionModuleOrganismComponent implements OnInit {
   constructor() {
     // Si cambia el período, la sección elegida ya no pertenece a la lista: se descarta.
     effect(() => {
-      const secciones = this.sigh.secciones();
+      const secciones = this.seccionesAbiertas();
       untracked(() => {
         if (!secciones.some((s) => s.idSeccion === this.formAsignacion.idSeccion)) {
           this.formAsignacion.idSeccion = secciones[0]?.idSeccion ?? null;
@@ -311,7 +316,7 @@ export class ProgramacionModuleOrganismComponent implements OnInit {
     const { idSeccion, idDocente, idEspacio, idFranja } = this.formAsignacion;
     // Cada id debe existir en las listas cargadas ahora (no valores viejos de otro período).
     const valido =
-      this.sigh.secciones().some((s) => s.idSeccion === idSeccion) &&
+      this.seccionesAbiertas().some((s) => s.idSeccion === idSeccion) &&
       this.sigh.docentes().some((d) => d.idDocente === idDocente) &&
       this.sigh.espacios().some((e) => e.idEspacio === idEspacio) &&
       this.sigh.franjas().some((f) => f.idFranja === idFranja);
