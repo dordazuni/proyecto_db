@@ -1,0 +1,108 @@
+digraph front {
+  graph [rankdir=TB, fontname="Liberation Serif", fontsize=16, labelloc=t, label=<<B>Fig. 8. Diagrama de componentes del front-end (Angular 21, front-horarios)</B><BR/> >, nodesep=0.3, ranksep=0.55, compound=true, newrank=true, pad=0.3];
+  node [fontname="Liberation Serif", fontsize=11];
+  edge [fontname="Liberation Serif", fontsize=10, arrowsize=0.8];
+  subgraph cluster_spa { label=<<B>Navegador: SPA front-horarios</B> (servida por Nginx)>; fontsize=14; style=solid; margin=14;
+  subgraph cluster_boot { label=<<B>Arranque y enrutamiento (src/app)</B>>; fontsize=12; style=solid; margin=10;
+    App [shape=component, margin="0.08,0.04", label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0"><TR><TD CELLPADDING="4">«component»<BR/><B>App</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">selector: app-root<BR ALIGN="LEFT"/>contiene &lt;router-outlet&gt;<BR ALIGN="LEFT"/></TD></TR></TABLE>>];
+    Config [shape=component, margin="0.08,0.04", label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0"><TR><TD CELLPADDING="4">«ApplicationConfig»<BR/><B>appConfig</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">provideRouter(routes, withHashLocation())<BR ALIGN="LEFT"/>provideHttpClient(withInterceptors([…]))<BR ALIGN="LEFT"/></TD></TR></TABLE>>];
+    Interceptor [shape=component, margin="0.08,0.04", label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0"><TR><TD CELLPADDING="4">«HttpInterceptorFn»<BR/><B>authRefreshInterceptor</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">renueva el token (X-Renewed-Token)<BR ALIGN="LEFT"/>reintenta tras un 401 con /auth/refresh<BR ALIGN="LEFT"/></TD></TR></TABLE>>];
+    Routes [shape=component, margin="0.08,0.04", label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0"><TR><TD CELLPADDING="4">«Routes»<BR/><B>routes</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">'' → ConnectionCheckPage<BR ALIGN="LEFT"/>'login' → LoginPage<BR ALIGN="LEFT"/>'bienvenida' → WelcomePage [authGuard]<BR ALIGN="LEFT"/>'**' → ''<BR ALIGN="LEFT"/></TD></TR></TABLE>>];
+    Guard [shape=component, margin="0.08,0.04", label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0"><TR><TD CELLPADDING="4">«CanActivateFn»<BR/><B>authGuard</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">exige token y sesión vigente (/auth/me)<BR ALIGN="LEFT"/>si falla, intenta /auth/refresh o va a /login<BR ALIGN="LEFT"/></TD></TR></TABLE>>];
+  }
+  subgraph cluster_pages { label=<<B>views/pages</B>>; fontsize=12; style=solid; margin=10;
+    PConn [shape=component, margin="0.08,0.04", label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0"><TR><TD CELLPADDING="4">«page»<BR/><B>ConnectionCheckPageComponent</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">ruta ''<BR ALIGN="LEFT"/>verifica la conexión API–BD<BR ALIGN="LEFT"/></TD></TR></TABLE>>];
+    PLogin [shape=component, margin="0.08,0.04", label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0"><TR><TD CELLPADDING="4">«page»<BR/><B>LoginPageComponent</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">ruta 'login'<BR ALIGN="LEFT"/>formulario de usuario y contraseña<BR ALIGN="LEFT"/></TD></TR></TABLE>>];
+    PWelcome [shape=component, margin="0.08,0.04", label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0"><TR><TD CELLPADDING="4">«page»<BR/><B>WelcomePageComponent</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">ruta 'bienvenida'<BR ALIGN="LEFT"/>menú de módulos según el rol<BR ALIGN="LEFT"/></TD></TR></TABLE>>];
+  }
+  subgraph cluster_templates { label=<<B>views/templates</B>>; fontsize=12; style=solid; margin=10;
+    TLayout [shape=component, margin="0.08,0.04", label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0"><TR><TD CELLPADDING="4">«template»<BR/><B>MainLayoutTemplateComponent</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">marco común de página<BR ALIGN="LEFT"/></TD></TR></TABLE>>];
+  }
+  subgraph cluster_organisms { label=<<B>views/organisms</B>>; fontsize=12; style=solid; margin=10;
+    OCat [shape=component, margin="0.08,0.04", label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0"><TR><TD CELLPADDING="4">«organism»<BR/><B>CatalogosModuleOrganism</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">períodos, docentes, espacios,<BR ALIGN="LEFT"/>recursos, cursos, franjas, parámetros<BR ALIGN="LEFT"/></TD></TR></TABLE>>];
+    OPlan [shape=component, margin="0.08,0.04", label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0"><TR><TD CELLPADDING="4">«organism»<BR/><B>PlaneacionModuleOrganism</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">secciones, matrícula real,<BR ALIGN="LEFT"/>disponibilidad docente<BR ALIGN="LEFT"/></TD></TR></TABLE>>];
+    OProg [shape=component, margin="0.08,0.04", label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0"><TR><TD CELLPADDING="4">«organism»<BR/><B>ProgramacionModuleOrganism</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">versiones, flujo de aval,<BR ALIGN="LEFT"/>asignaciones en la grilla<BR ALIGN="LEFT"/></TD></TR></TABLE>>];
+    ORep [shape=component, margin="0.08,0.04", label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0"><TR><TD CELLPADDING="4">«organism»<BR/><B>ReportesModuleOrganism</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">horario por versión, docente y espacio;<BR ALIGN="LEFT"/>carga docente y reglas blandas<BR ALIGN="LEFT"/></TD></TR></TABLE>>];
+    OSeg [shape=component, margin="0.08,0.04", label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0"><TR><TD CELLPADDING="4">«organism»<BR/><B>SeguridadModuleOrganism</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">usuarios, roles, sesiones<BR ALIGN="LEFT"/>y bitácora de auditoría<BR ALIGN="LEFT"/></TD></TR></TABLE>>];
+    OGrid [shape=component, margin="0.08,0.04", label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0"><TR><TD CELLPADDING="4">«organism»<BR/><B>TimetableGridOrganism</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">in: franjas, sesiones, editable<BR ALIGN="LEFT"/>out: selectSlot, moveSession, deleteSession<BR ALIGN="LEFT"/></TD></TR></TABLE>>];
+    OCard [shape=component, margin="0.08,0.04", label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0"><TR><TD CELLPADDING="4">«organism»<BR/><B>ConnectionCardOrganism</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">in: loading, badgeLabel, variant, title,<BR ALIGN="LEFT"/>description, showButton, buttonText<BR ALIGN="LEFT"/>out: buttonClick<BR ALIGN="LEFT"/></TD></TR></TABLE>>];
+  }
+  subgraph cluster_molecules { label=<<B>views/molecules</B>>; fontsize=12; style=solid; margin=10;
+    MRule [shape=component, margin="0.08,0.04", label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0"><TR><TD CELLPADDING="4">«molecule»<BR/><B>RuleAlertMolecule</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">in: alert<BR ALIGN="LEFT"/>out: dismiss<BR ALIGN="LEFT"/>muestra la regla (RN) violada<BR ALIGN="LEFT"/></TD></TR></TABLE>>];
+    MStatus [shape=component, margin="0.08,0.04", label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0"><TR><TD CELLPADDING="4">«molecule»<BR/><B>StatusMessageMolecule</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">in: badgeLabel, variant, title, description<BR ALIGN="LEFT"/></TD></TR></TABLE>>];
+  }
+  subgraph cluster_atoms { label=<<B>views/atoms</B>>; fontsize=12; style=solid; margin=10;
+    AButton [shape=component, margin="0.08,0.04", label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0"><TR><TD CELLPADDING="4">«atom»<BR/><B>ButtonAtom</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">in: text, disabled<BR ALIGN="LEFT"/>out: action<BR ALIGN="LEFT"/></TD></TR></TABLE>>];
+    ASpinner [shape=component, margin="0.08,0.04", label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0"><TR><TD CELLPADDING="4">«atom»<BR/><B>SpinnerAtom</B></TD></TR></TABLE>>];
+    ABadge [shape=component, margin="0.08,0.04", label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0"><TR><TD CELLPADDING="4">«atom»<BR/><B>StatusBadgeAtom</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">in: label, variant<BR ALIGN="LEFT"/></TD></TR></TABLE>>];
+  }
+  subgraph cluster_controllers { label=<<B>controllers (estado de la vista con signals)</B>>; fontsize=12; style=solid; margin=10;
+    CSigh [shape=component, margin="0.08,0.04", label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0"><TR><TD CELLPADDING="4">«Injectable»<BR/><B>SighController</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">estado de catálogos, planeación, programación,<BR ALIGN="LEFT"/>reportes y seguridad; módulo activo y alertas;<BR ALIGN="LEFT"/>traduce los errores de la API en alertas<BR ALIGN="LEFT"/></TD></TR></TABLE>>];
+    CConn [shape=component, margin="0.08,0.04", label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0"><TR><TD CELLPADDING="4">«Injectable»<BR/><B>ConnectionController</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">verifyAndRedirect(): /echo y redirección<BR ALIGN="LEFT"/>a login o bienvenida<BR ALIGN="LEFT"/></TD></TR></TABLE>>];
+  }
+  subgraph cluster_services { label=<<B>services (acceso HTTP)</B>>; fontsize=12; style=solid; margin=10;
+    SApi [shape=component, margin="0.08,0.04", label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0"><TR><TD CELLPADDING="4">«Injectable»<BR/><B>SighApiService</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">un método por recurso REST de la API<BR ALIGN="LEFT"/>sesión: authToken, authenticatedUser,<BR ALIGN="LEFT"/>login, refreshToken, logout<BR ALIGN="LEFT"/></TD></TR></TABLE>>];
+    SEcho [shape=component, margin="0.08,0.04", label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0"><TR><TD CELLPADDING="4">«Injectable»<BR/><B>EchoService</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">checkEcho(): GET /api/echo<BR ALIGN="LEFT"/></TD></TR></TABLE>>];
+  }
+  subgraph cluster_models { label=<<B>models y configuración</B>>; fontsize=12; style=solid; margin=10;
+    MModels [shape=component, margin="0.08,0.04", label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0"><TR><TD CELLPADDING="4">«interfaces TypeScript»<BR/><B>sigh.models.ts</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">26 interfaces espejo de los DTO del back-end<BR ALIGN="LEFT"/>(PeriodoAcademico, Seccion, Asignacion, …)<BR ALIGN="LEFT"/></TD></TR></TABLE>>];
+    MEcho [shape=component, margin="0.08,0.04", label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0"><TR><TD CELLPADDING="4">«interface»<BR/><B>echo-response.model.ts</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">EchoResponse<BR ALIGN="LEFT"/></TD></TR></TABLE>>];
+    MCfg [shape=component, margin="0.08,0.04", label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0"><TR><TD CELLPADDING="4">«config»<BR/><B>API_CONFIG</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">baseUrl = environment.apiBaseUrl ('/api')<BR ALIGN="LEFT"/></TD></TR></TABLE>>];
+  }
+  }
+    Nginx [shape=component, margin="0.08,0.04", label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0"><TR><TD CELLPADDING="4">«servidor web»<BR/><B>Nginx</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">sirve la SPA y redirige /api<BR ALIGN="LEFT"/>a localhost:8080 (proxy inverso)<BR ALIGN="LEFT"/></TD></TR></TABLE>>];
+    Api [shape=component, margin="0.08,0.04", label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0"><TR><TD CELLPADDING="4">«Spring Boot (back-end)»<BR/><B>API REST SIGH</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">controladores de las Fig. 1 a 6<BR ALIGN="LEFT"/></TD></TR></TABLE>>];
+    iface [shape=circle, width=0.18, label="", xlabel=<REST/JSON /api>];
+  App -> Routes [arrowhead=vee, label="router-outlet"];
+  Config -> Routes [style=dashed, arrowhead=vee];
+  Config -> Interceptor [style=dashed, arrowhead=vee];
+  Routes -> Guard [arrowhead=vee, label="canActivate"];
+  Routes -> PConn [arrowhead=vee];
+  Routes -> PLogin [arrowhead=vee];
+  Routes -> PWelcome [arrowhead=vee];
+  PConn -> TLayout [arrowhead=vee];
+  PLogin -> TLayout [arrowhead=vee];
+  PConn -> OCard [arrowhead=vee];
+  PWelcome -> OCat [arrowhead=vee];
+  PWelcome -> OPlan [arrowhead=vee];
+  PWelcome -> OProg [arrowhead=vee];
+  PWelcome -> ORep [arrowhead=vee];
+  PWelcome -> OSeg [arrowhead=vee];
+  PWelcome -> MRule [arrowhead=vee];
+  OProg -> OGrid [arrowhead=vee];
+  ORep -> OGrid [arrowhead=vee];
+  OCard -> MStatus [arrowhead=vee];
+  OCard -> AButton [arrowhead=vee];
+  OCard -> ASpinner [arrowhead=vee];
+  MStatus -> ABadge [arrowhead=vee];
+  OCat -> CSigh [style=dashed, arrowhead=vee];
+  OPlan -> CSigh [style=dashed, arrowhead=vee];
+  OProg -> CSigh [style=dashed, arrowhead=vee];
+  ORep -> CSigh [style=dashed, arrowhead=vee];
+  OSeg -> CSigh [style=dashed, arrowhead=vee];
+  PWelcome -> CSigh [style=dashed, arrowhead=vee];
+  PLogin -> CSigh [style=dashed, arrowhead=vee];
+  PLogin -> SApi [style=dashed, arrowhead=vee];
+  PWelcome -> CConn [style=dashed, arrowhead=vee];
+  PConn -> CConn [style=dashed, arrowhead=vee];
+  CSigh -> SApi [style=dashed, arrowhead=vee];
+  CSigh -> SEcho [style=dashed, arrowhead=vee];
+  CConn -> SApi [style=dashed, arrowhead=vee];
+  CConn -> SEcho [style=dashed, arrowhead=vee];
+  Guard -> SApi [style=dashed, arrowhead=vee];
+  Interceptor -> SApi [style=dashed, arrowhead=vee];
+  SApi -> MModels [style=dashed, arrowhead=vee, label="«use»"];
+  SEcho -> MEcho [style=dashed, arrowhead=vee, label="«use»"];
+  SApi -> MCfg [style=dashed, arrowhead=vee];
+  SEcho -> MCfg [style=dashed, arrowhead=vee];
+  SApi -> Nginx [arrowhead=vee, label="HTTP + Bearer token", ltail=cluster_services];
+  Nginx -> iface [arrowhead=none, style=solid, label="requiere"];
+  iface -> Api [arrowhead=none, dir=none, label="provee"];
+  { rank=same; PConn; PLogin; PWelcome; Guard; }
+  { rank=same; OCat; OPlan; OProg; ORep; OSeg; OCard; TLayout; }
+  { rank=same; OGrid; MRule; MStatus; CSigh; CConn; }
+  { rank=same; AButton; ASpinner; ABadge; SApi; SEcho; }
+  { rank=same; MModels; MEcho; MCfg; Nginx; iface; Api; }
+  leyenda [shape=plain, label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD COLSPAN="2"><B>Notación UML</B></TD></TR><TR><TD ALIGN="LEFT">Componente con «estereotipo»</TD><TD ALIGN="LEFT">Pieza de Angular: page, template, organism, molecule, atom, servicio o función</TD></TR><TR><TD ALIGN="LEFT">Línea continua con punta abierta</TD><TD ALIGN="LEFT">Uso por plantilla (&lt;app-…&gt;) o por enrutamiento</TD></TR><TR><TD ALIGN="LEFT">Línea discontinua con punta abierta</TD><TD ALIGN="LEFT">Inyección de dependencias (inject) o «use» de modelos y configuración</TD></TR><TR><TD ALIGN="LEFT">Círculo</TD><TD ALIGN="LEFT">Interfaz provista por la API REST (bola) y requerida por el cliente</TD></TR><TR><TD ALIGN="LEFT">in / out</TD><TD ALIGN="LEFT">Propiedades input() y eventos output() del componente</TD></TR></TABLE>>];
+  MModels -> leyenda [style=invis];
+}

@@ -1,0 +1,154 @@
+digraph "b0" {
+  graph [rankdir=LR, fontname="Liberation Serif", fontsize=16, labelloc=t, label=<<B>Fig. 1. Diagrama de clases del back-end: vista general por paquete (co.edu.unbosque.apihorarios)</B><BR/> >, nodesep=0.35, ranksep=0.6, compound=true, newrank=true, pad=0.3 , ranksep=1.1, nodesep=0.3];
+  node [shape=plain, fontname="Liberation Serif", fontsize=11];
+  edge [fontname="Liberation Serif", fontsize=10, arrowsize=0.8];
+  subgraph cluster_controller { label=<<B>controller</B>>; fontsize=13; style=solid; margin=12;
+    SeguridadAuditoriaController [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5">«RestController»<BR/><B>SeguridadAuditoriaController</B></TD></TR></TABLE>>];
+    CatalogoController [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5">«RestController»<BR/><B>CatalogoController</B></TD></TR></TABLE>>];
+    PlaneacionController [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5">«RestController»<BR/><B>PlaneacionController</B></TD></TR></TABLE>>];
+    ProgramacionController [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5">«RestController»<BR/><B>ProgramacionController</B></TD></TR></TABLE>>];
+    ReporteController [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5">«RestController»<BR/><B>ReporteController</B></TD></TR></TABLE>>];
+    EchoController [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5">«RestController»<BR/><B>EchoController</B></TD></TR></TABLE>>];
+  }
+  subgraph cluster_service { label=<<B>service</B>>; fontsize=13; style=solid; margin=12;
+    SeguridadAuditoriaService [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5">«Service»<BR/><B>SeguridadAuditoriaService</B></TD></TR></TABLE>>];
+    CatalogoService [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5">«Service»<BR/><B>CatalogoService</B></TD></TR></TABLE>>];
+    PlaneacionService [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5">«Service»<BR/><B>PlaneacionService</B></TD></TR></TABLE>>];
+    ProgramacionService [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5">«Service»<BR/><B>ProgramacionService</B></TD></TR></TABLE>>];
+    ReporteService [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5">«Service»<BR/><B>ReporteService</B></TD></TR></TABLE>>];
+    EchoService [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5">«Service»<BR/><B>EchoService</B></TD></TR></TABLE>>];
+  }
+  subgraph cluster_repository { label=<<B>repository</B>>; fontsize=13; style=solid; margin=12;
+    SeguridadAuditoriaRepository [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5">«Repository»<BR/><B>SeguridadAuditoriaRepository</B></TD></TR></TABLE>>];
+    CatalogoRepository [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5">«Repository»<BR/><B>CatalogoRepository</B></TD></TR></TABLE>>];
+    PlaneacionRepository [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5">«Repository»<BR/><B>PlaneacionRepository</B></TD></TR></TABLE>>];
+    ProgramacionRepository [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5">«Repository»<BR/><B>ProgramacionRepository</B></TD></TR></TABLE>>];
+    ReporteRepository [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5">«Repository»<BR/><B>ReporteRepository</B></TD></TR></TABLE>>];
+    DatabaseCheckRepository [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5">«Repository»<BR/><B>DatabaseCheckRepository</B></TD></TR></TABLE>>];
+  }
+  subgraph cluster_security { label=<<B>security</B>>; fontsize=13; style=solid; margin=12;
+    AuthFilter [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5">«Component»<BR/><B>AuthFilter</B></TD></TR></TABLE>>];
+    AuthTokenService [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5">«Service»<BR/><B>AuthTokenService</B></TD></TR></TABLE>>];
+    UserSessionRegistry [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5">«Component»<BR/><B>UserSessionRegistry</B></TD></TR></TABLE>>];
+    AuthContextHolder [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5"><B>AuthContextHolder</B></TD></TR></TABLE>>];
+    UnauthorizedException [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5">«exception»<BR/><B>UnauthorizedException</B></TD></TR></TABLE>>];
+    ActiveSession [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5">«record»<BR/><B>ActiveSession</B></TD></TR></TABLE>>];
+    ActiveSessionDto [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5">«record»<BR/><B>ActiveSessionDto</B></TD></TR></TABLE>>];
+  }
+  subgraph cluster_config { label=<<B>config</B>>; fontsize=13; style=solid; margin=12;
+    DataSourceConfig [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5">«Configuration»<BR/><B>DataSourceConfig</B></TD></TR></TABLE>>];
+    CorsConfig [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5">«Component»<BR/><B>CorsConfig</B></TD></TR></TABLE>>];
+    GlobalExceptionHandler [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5">«RestControllerAdvice»<BR/><B>GlobalExceptionHandler</B></TD></TR></TABLE>>];
+    RoleAwareDataSource [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5">«clase anidada privada»<BR/><B>RoleAwareDataSource</B></TD></TR></TABLE>>];
+  }
+  subgraph cluster_app { label=<<B>apihorarios (raíz)</B>>; fontsize=13; style=solid; margin=12;
+    ApiHorariosApplication [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5">«SpringBootApplication»<BR/><B>ApiHorariosApplication</B></TD></TR></TABLE>>];
+  }
+  subgraph cluster_model { label=<<B>model</B> (24 DTO; atributos en la Fig. 7)>; fontsize=13; style=solid; margin=12;
+    ApiErrorResponse [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5"><B>ApiErrorResponse</B></TD></TR></TABLE>>];
+    Asignacion [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5"><B>Asignacion</B></TD></TR></TABLE>>];
+    CargaDocente [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5"><B>CargaDocente</B></TD></TR></TABLE>>];
+    Curso [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5"><B>Curso</B></TD></TR></TABLE>>];
+    CursoRecurso [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5"><B>CursoRecurso</B></TD></TR></TABLE>>];
+    Disponibilidad [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5"><B>Disponibilidad</B></TD></TR></TABLE>>];
+    Docente [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5"><B>Docente</B></TD></TR></TABLE>>];
+    DocenteCurso [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5"><B>DocenteCurso</B></TD></TR></TABLE>>];
+    EchoResponse [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5"><B>EchoResponse</B></TD></TR></TABLE>>];
+    Espacio [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5"><B>Espacio</B></TD></TR></TABLE>>];
+    EspacioRecurso [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5"><B>EspacioRecurso</B></TD></TR></TABLE>>];
+    Franja [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5"><B>Franja</B></TD></TR></TABLE>>];
+    HorarioDetalle [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5"><B>HorarioDetalle</B></TD></TR></TABLE>>];
+    LogAuditoria [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5"><B>LogAuditoria</B></TD></TR></TABLE>>];
+    LoginRequest [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5"><B>LoginRequest</B></TD></TR></TABLE>>];
+    LoginResponse [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5"><B>LoginResponse</B></TD></TR></TABLE>>];
+    ParametroSistema [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5"><B>ParametroSistema</B></TD></TR></TABLE>>];
+    PeriodoAcademico [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5"><B>PeriodoAcademico</B></TD></TR></TABLE>>];
+    Recurso [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5"><B>Recurso</B></TD></TR></TABLE>>];
+    Rol [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5"><B>Rol</B></TD></TR></TABLE>>];
+    Seccion [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5"><B>Seccion</B></TD></TR></TABLE>>];
+    SeccionRiesgoCierre [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5"><B>SeccionRiesgoCierre</B></TD></TR></TABLE>>];
+    SeccionSesionesFaltantes [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5"><B>SeccionSesionesFaltantes</B></TD></TR></TABLE>>];
+    SesionDiasConsecutivos [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5"><B>SesionDiasConsecutivos</B></TD></TR></TABLE>>];
+    TipoContrato [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5"><B>TipoContrato</B></TD></TR></TABLE>>];
+    Usuario [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5"><B>Usuario</B></TD></TR></TABLE>>];
+    VersionHorario [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD CELLPADDING="5"><B>VersionHorario</B></TD></TR></TABLE>>];
+    { rank=same; ApiErrorResponse; Asignacion; CargaDocente; Curso; CursoRecurso; Disponibilidad; }
+    ApiErrorResponse -> Docente [style=invis];
+    { rank=same; Docente; DocenteCurso; EchoResponse; Espacio; EspacioRecurso; Franja; }
+    Docente -> HorarioDetalle [style=invis];
+    { rank=same; HorarioDetalle; LogAuditoria; LoginRequest; LoginResponse; ParametroSistema; PeriodoAcademico; }
+    HorarioDetalle -> Recurso [style=invis];
+    { rank=same; Recurso; Rol; Seccion; SeccionRiesgoCierre; SeccionSesionesFaltantes; SesionDiasConsecutivos; }
+    Recurso -> TipoContrato [style=invis];
+    { rank=same; TipoContrato; Usuario; VersionHorario; }
+  }
+  ext_DataSource [shape=box, style=dashed, fontname="Liberation Serif", fontsize=11, margin="0.12,0.06", label=<«interface»<BR/>javax.sql.DataSource>];
+  ext_Hikari [shape=box, style=dashed, fontname="Liberation Serif", fontsize=11, margin="0.12,0.06", label=<HikariDataSource>];
+  ext_Filter [shape=box, style=dashed, fontname="Liberation Serif", fontsize=11, margin="0.12,0.06", label=<«interface»<BR/>jakarta.servlet.Filter>];
+  ext_OPRF [shape=box, style=dashed, fontname="Liberation Serif", fontsize=11, margin="0.12,0.06", label=<OncePerRequestFilter>];
+  ext_RTE [shape=box, style=dashed, fontname="Liberation Serif", fontsize=11, margin="0.12,0.06", label=<RuntimeException>];
+  { rank=same; SeguridadAuditoriaController; CatalogoController; PlaneacionController; ProgramacionController; ReporteController; EchoController; }
+  { rank=same; SeguridadAuditoriaService; CatalogoService; PlaneacionService; ProgramacionService; ReporteService; EchoService; }
+  { rank=same; SeguridadAuditoriaRepository; CatalogoRepository; PlaneacionRepository; ProgramacionRepository; ReporteRepository; DatabaseCheckRepository; AuthTokenService; UserSessionRegistry; }
+  SeguridadAuditoriaController -> CatalogoController [style=invis];
+  CatalogoController -> PlaneacionController [style=invis];
+  PlaneacionController -> ProgramacionController [style=invis];
+  ProgramacionController -> ReporteController [style=invis];
+  ReporteController -> EchoController [style=invis];
+  SeguridadAuditoriaService -> CatalogoService [style=invis];
+  CatalogoService -> PlaneacionService [style=invis];
+  PlaneacionService -> ProgramacionService [style=invis];
+  ProgramacionService -> ReporteService [style=invis];
+  ReporteService -> EchoService [style=invis];
+  SeguridadAuditoriaRepository -> CatalogoRepository [style=invis];
+  CatalogoRepository -> PlaneacionRepository [style=invis];
+  PlaneacionRepository -> ProgramacionRepository [style=invis];
+  ProgramacionRepository -> ReporteRepository [style=invis];
+  ReporteRepository -> DatabaseCheckRepository [style=invis];
+  SeguridadAuditoriaController -> SeguridadAuditoriaService [arrowhead=vee];
+  CatalogoController -> CatalogoService [arrowhead=vee];
+  PlaneacionController -> PlaneacionService [arrowhead=vee];
+  ProgramacionController -> ProgramacionService [arrowhead=vee];
+  ReporteController -> ReporteService [arrowhead=vee];
+  EchoController -> EchoService [arrowhead=vee];
+  SeguridadAuditoriaService -> SeguridadAuditoriaRepository [arrowhead=vee];
+  CatalogoService -> CatalogoRepository [arrowhead=vee];
+  PlaneacionService -> PlaneacionRepository [arrowhead=vee];
+  ProgramacionService -> ProgramacionRepository [arrowhead=vee];
+  ReporteService -> ReporteRepository [arrowhead=vee];
+  EchoService -> DatabaseCheckRepository [arrowhead=vee];
+  SeguridadAuditoriaRepository -> ext_DataSource [arrowhead=vee];
+  CatalogoRepository -> ext_DataSource [arrowhead=vee];
+  PlaneacionRepository -> ext_DataSource [arrowhead=vee];
+  ProgramacionRepository -> ext_DataSource [arrowhead=vee];
+  ReporteRepository -> ext_DataSource [arrowhead=vee];
+  DatabaseCheckRepository -> ext_DataSource [arrowhead=vee];
+  SeguridadAuditoriaService -> AuthTokenService [arrowhead=vee];
+  SeguridadAuditoriaService -> UserSessionRegistry [arrowhead=vee];
+  SeguridadAuditoriaController -> UserSessionRegistry [style=dashed, arrowhead=vee, constraint=false];
+  AuthFilter -> AuthTokenService [arrowhead=vee];
+  AuthFilter -> UserSessionRegistry [arrowhead=vee];
+  AuthFilter -> AuthContextHolder [style=dashed, arrowhead=vee];
+  AuthFilter -> ext_OPRF [arrowhead=onormal, arrowsize=1.1];
+  UnauthorizedException -> ext_RTE [arrowhead=onormal, arrowsize=1.1];
+  CorsConfig -> ext_Filter [style=dashed, arrowhead=onormal, arrowsize=1.1];
+  UserSessionRegistry -> ActiveSession [dir=back, arrowtail=diamond, arrowsize=1.0];
+  UserSessionRegistry -> ActiveSessionDto [dir=back, arrowtail=diamond, arrowsize=1.0];
+  DataSourceConfig -> RoleAwareDataSource [dir=back, arrowtail=diamond, arrowsize=1.0];
+  DataSourceConfig -> ext_Hikari [dir=back, arrowtail=diamond, arrowsize=1.0, headlabel="4"];
+  RoleAwareDataSource -> ext_DataSource [style=dashed, arrowhead=onormal, arrowsize=1.1];
+  RoleAwareDataSource -> AuthContextHolder [style=dashed, arrowhead=vee];
+  GlobalExceptionHandler -> UnauthorizedException [style=dashed, arrowhead=vee];
+  GlobalExceptionHandler -> ApiErrorResponse [style=dashed, arrowhead=vee];
+  AuthTokenService -> UnauthorizedException [style=dashed, arrowhead=vee];
+  AuthContextHolder -> UnauthorizedException [style=dashed, arrowhead=vee];
+  PlaneacionService -> AuthContextHolder [style=dashed, arrowhead=vee];
+  ProgramacionService -> AuthContextHolder [style=dashed, arrowhead=vee];
+  SeguridadAuditoriaService -> AuthContextHolder [style=dashed, arrowhead=vee];
+  PlaneacionRepository -> AuthContextHolder [style=dashed, arrowhead=vee];
+  ProgramacionRepository -> AuthContextHolder [style=dashed, arrowhead=vee];
+  LoginResponse -> Usuario [arrowhead=vee, headlabel="1", constraint=false];
+  ext_DataSource -> ApiErrorResponse [style=invis];
+  DatabaseCheckRepository -> CargaDocente [style=dashed, arrowhead=vee, lhead=cluster_model, label="«use» (controller, service y repository)"];
+  leyenda [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD COLSPAN="2"><B>Notación UML</B></TD></TR><TR><TD ALIGN="LEFT">Línea continua con punta abierta</TD><TD ALIGN="LEFT">Asociación dirigida: campo final inyectado por constructor</TD></TR><TR><TD ALIGN="LEFT">Línea discontinua con punta abierta</TD><TD ALIGN="LEFT">Dependencia «use»: la clase usa a la otra sin guardarla como campo</TD></TR><TR><TD ALIGN="LEFT">Línea continua con triángulo vacío</TD><TD ALIGN="LEFT">Generalización (extends)</TD></TR><TR><TD ALIGN="LEFT">Línea discontinua con triángulo vacío</TD><TD ALIGN="LEFT">Realización (implements)</TD></TR><TR><TD ALIGN="LEFT">Rombo relleno en el extremo del todo</TD><TD ALIGN="LEFT">Composición: clase anidada o contenida</TD></TR><TR><TD ALIGN="LEFT">Recuadro discontinuo</TD><TD ALIGN="LEFT">Tipo externo (Spring, Jakarta, JDK, HikariCP)</TD></TR><TR><TD ALIGN="LEFT">«estereotipo»</TD><TD ALIGN="LEFT">Anotación de Spring de la clase o tipo de clase</TD></TR></TABLE>>];
+}
