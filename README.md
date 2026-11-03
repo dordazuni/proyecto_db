@@ -98,7 +98,8 @@ La administración de la base de datos se realiza de forma segura mediante túne
 | **Frontend web conectado a la API** | [`source/front-end/`](source/front-end/) | Completo |
 | **Modelos nativos Data Modeler** | [`docs/Data Modeler Final.zip`](docs/Data%20Modeler%20Final.zip) | Completo |
 | **Álgebra relacional (50 ejercicios)** | [`docs/gestion/F1_Algebra_Relacional_SIGH.docx`](docs/gestion/F1_Algebra_Relacional_SIGH.docx) / [`SQL`](docs/gestion/F1_Algebra_Relacional_SIGH.sql) | Completo |
-| **Interesados y Presupuesto** | Incluidos en [`docs/gestion/F0_Acta_de_Constitucion_SIGH.docx`](docs/gestion/F0_Acta_de_Constitucion_SIGH.docx) | Completo |
-| **Plan y Manuales de Pruebas** | [`docs/gestion/F11_Plan_de_Pruebas_SIGH.docx`](docs/gestion/F11_Plan_de_Pruebas_SIGH.docx) y [`docs/MANUAL_PRUEBAS_WEB.md`](docs/MANUAL_PRUEBAS_WEB.md) | Completo |
+| **Identificación de interesados** | [`docs/gestion/F0_Interesados_SIGH.docx`](docs/gestion/F0_Interesados_SIGH.docx) | Completo |
+| **Presupuesto** | [`docs/gestion/F0_Presupuesto_SIGH.docx`](docs/gestion/F0_Presupuesto_SIGH.docx) | Completo |
+| **Plan y Manuales de Pruebas** (46/46 pruebas del script 07 superadas en la VM) | [`docs/gestion/F11_Plan_de_Pruebas_SIGH.docx`](docs/gestion/F11_Plan_de_Pruebas_SIGH.docx) y [`docs/MANUAL_PRUEBAS_WEB.md`](docs/MANUAL_PRUEBAS_WEB.md) | Completo |
 | **Acta de cierre** | [`docs/gestion/F0_Acta_de_Cierre_SIGH.docx`](docs/gestion/F0_Acta_de_Cierre_SIGH.docx) / [`PDF`](docs/gestion/F0_Acta_de_Cierre_SIGH.pdf) | Completo |
 | **Presentación y Video de sustentación (15 min)** | Enlace pendiente de grabación (2 de noviembre) | En proceso (Los tres) |
