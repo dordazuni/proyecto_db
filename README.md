@@ -78,6 +78,7 @@ La administración de la base de datos se realiza de forma segura mediante túne
 
 | Entregable | Ubicación | Estado |
 |---|---|:---:|
+| **Documento final** | [`docs/gestion/SIGH_Documento_Final.docx`](docs/gestion/SIGH_Documento_Final.docx) | Completo |
 | **Acta de constitución** | [`docs/gestion/F0_Acta_de_Constitucion_SIGH.docx`](docs/gestion/F0_Acta_de_Constitucion_SIGH.docx) | Completo |
 | **EDT / WBS** | [`docs/gestion/F0_EDT_SIGH.docx`](docs/gestion/F0_EDT_SIGH.docx) | Completo |
 | **Cronograma** | [`docs/gestion/F0_Cronograma_SIGH.docx`](docs/gestion/F0_Cronograma_SIGH.docx) | Completo |
