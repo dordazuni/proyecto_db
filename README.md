@@ -92,7 +92,7 @@ La administración de la base de datos se realiza de forma segura mediante túne
 | **Diccionario de datos** | [`docs/gestion/SIGH — Diccionario de datos.pdf`](docs/gestion/SIGH%20%E2%80%94%20Diccionario%20de%20datos.pdf) | Completo |
 | **Análisis de selección del SO** | [`docs/gestion/SIGH - Analisis de seleccion del SO.pdf`](docs/gestion/SIGH%20-%20Analisis%20de%20seleccion%20del%20SO.pdf) | Completo |
 | **Análisis de selección del RDBMS** | [`docs/gestion/SIGH - Analisis de seleccion del RDBMS.pdf`](docs/gestion/SIGH%20-%20Analisis%20de%20seleccion%20del%20RDBMS.pdf) | Completo |
-| **Despliegue e implementación de VM y RDBMS** | [`docs/virtual-machine/README.md`](docs/virtual-machine/README.md) | Completo |
+| **Despliegue e implementación de VM y RDBMS** | [`AWS EC2`](docs/virtual-machine/README.md) / VirtualBox: [`MD`](docs/virtual-machine/MANUAL_VIRTUALBOX.md) - [`DOCX`](docs/virtual-machine/SIGH%20-%20Manual%20Despliegue%20VirtualBox.docx) - [`PDF`](docs/virtual-machine/SIGH%20-%20Manual%20Despliegue%20VirtualBox.pdf) | Completo |
 | **Scripts de base de datos (01 a 07) + README** | [`source/db/`](source/db/) | Completo |
 | **API REST conectada a la base de datos** | [`source/back-end/`](source/back-end/) | Completo |
 | **Frontend web conectado a la API** | [`source/front-end/`](source/front-end/) | Completo |
