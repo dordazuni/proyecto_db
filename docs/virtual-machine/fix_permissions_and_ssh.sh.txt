@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# Script de Reparación de Sudoers y Habilitación de SSH
+# Ejecutar como root (en modo recuperación o consola root)
+# ==============================================================================
+set -e
+
+echo ">>> [1/4] Habilitando escritura en el disco..."
+mount -o remount,rw / 2>/dev/null || true
+
+echo ">>> [2/4] Reparando permisos y propietario de /etc/sudoers..."
+chown root:root /etc/sudoers
+chmod 440 /etc/sudoers
+
+if [ -d /etc/sudoers.d ]; then
+    chown -R root:root /etc/sudoers.d
+    chmod 755 /etc/sudoers.d
+    chmod 440 /etc/sudoers.d/* 2>/dev/null || true
+fi
+
+echo ">>> [3/4] Instalando y habilitando OpenSSH Server..."
+apt update -y
+apt install -y openssh-server
+
+systemctl enable ssh
+systemctl restart ssh
+
+echo ">>> [4/4] Abriendo puertos en Firewall (22 SSH y 5432 PostgreSQL)..."
+if command -v ufw >/dev/null 2>&1; then
+    ufw allow 22/tcp 2>/dev/null || true
+    ufw allow 5432/tcp 2>/dev/null || true
+fi
+
+echo ""
+echo "=========================================================="
+echo " ¡REPARACIÓN EXITOSA! Sudo y SSH ya están funcionando."
+echo " Tu IP actual es:"
+hostname -I
+echo "=========================================================="
