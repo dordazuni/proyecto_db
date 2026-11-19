@@ -1,8 +1,5 @@
 # SIGH — Sistema Integrado de Gestión de Horarios
 
-Proyecto final de **Bases de Datos 1** — Programa de Ingeniería de Sistemas — Universidad El Bosque  
-Docente: Ing. Christian Felipe Duarte  
-
 Base de datos relacional en **PostgreSQL** para programar horarios académicos: qué sección de qué curso se dicta, con qué docente, en qué espacio y en qué franja, dentro de una versión de horario de un período académico. La base de datos hace cumplir las reglas de negocio por sí sola (llaves, restricciones, triggers y permisos). Una aplicación web (API en Spring Boot e interfaz en Angular) la consulta y la modifica.
 
 ---
