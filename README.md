@@ -7,14 +7,6 @@ Base de datos relacional en **PostgreSQL** para programar horarios académicos: 
 
 ---
 
-## Equipo
-
-| Integrante | Rol en el proyecto |
-|---|---|
-| **Ángel Daniel Aya Páez** | Gerente del proyecto: gestión, requisitos, álgebra relacional y pruebas |
-| **Julián Felipe López Narváez** | Capa de datos: modelo entidad-relación, modelo relacional, normalización y scripts |
-| **David Alejandro Ordaz Luque** | Infraestructura y aplicación: máquinas virtuales en AWS, backend y frontend |
-
 ---
 
 ## Arquitectura
